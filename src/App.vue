@@ -1,18 +1,21 @@
 <template>
-<p>Sectio Canonis 1.0.0</p>
+<p>{{msg}}</p>
 </template>
 
-<script>
+<script lang="ts">
+import { Options, Vue } from 'vue-class-component';
 import firebase from 'firebase/app';
 import 'firebase/firestore';
-export default {
+
+@Options({ 
   name: 'App',
   components: {
     
   },
   data: () => ({
     firebase: null,
-    db: null
+    db: null,
+    msg: "Sectio Canonis 1.0.0"
   }),
   created() {
     this.initialize();
@@ -34,7 +37,9 @@ export default {
       this.db = firebase.firestore();
     }
   }
-}
+})
+
+export default class App extends Vue {}
 </script>
 
 <style>

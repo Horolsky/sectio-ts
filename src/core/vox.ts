@@ -1,20 +1,20 @@
 /* eslint-disable no-console */
-var Vox = (function () {
-    let privateProps = new WeakMap();
-    let _attack = 50;
-    let _decay = 200;
+const Vox = (function () {
+    const privateProps = new WeakMap();
+    const _attack = 50;
+    const _decay = 200;
     let _compressor = undefined,
         _context = undefined;
 
     class Vox {
 
         constructor(context, compressor, freq, wave) {
-            let node = context.createGain();
+            const node = context.createGain();
             node.connect(compressor);
             node.gain.setValueAtTime(0, context.currentTime);
 
 
-            let oscillator = context.createOscillator();
+            const oscillator = context.createOscillator();
             oscillator.type = wave;
             oscillator.frequency.setValueAtTime(freq, context.currentTime); // value in hertz
             oscillator.connect(node);
@@ -71,7 +71,7 @@ var Vox = (function () {
             privateProps.get(this).oscillators = [];
             // setting chord
             for (let i = 0; i < freqArray.length; i++) {
-                let oscillator = _context.createOscillator();
+                const oscillator = _context.createOscillator();
                 oscillator.type = this.wave;
                 oscillator.frequency.setValueAtTime(freqArray[i], _context.currentTime); // value in hertz
                 oscillator.connect(this.node);
