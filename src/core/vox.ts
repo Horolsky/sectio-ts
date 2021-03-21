@@ -3,16 +3,19 @@ const Vox = (function () {
     const privateProps = new WeakMap();
     const _attack = 50;
     const _decay = 200;
-    let _compressor = undefined,
-        _context = undefined;
+    let _compressor: DynamicsCompressorNode;
+    let _context: AudioContext;
 
     class Vox {
-
-        constructor(context, compressor, freq, wave) {
+        constructor(
+            context: AudioContext,
+            compressor: DynamicsCompressorNode, 
+            freq: number,
+            wave: OscillatorType
+            ) {
             const node = context.createGain();
             node.connect(compressor);
             node.gain.setValueAtTime(0, context.currentTime);
-
 
             const oscillator = context.createOscillator();
             oscillator.type = wave;
@@ -63,7 +66,7 @@ const Vox = (function () {
             privateProps.get(this).wave = type;
         }
 
-        setChord(freqArray) {
+        setChord(freqArray: number[]) {
             //cleaning
             for (let i = 0; i < privateProps.get(this).oscillators.length; i++) {
                 privateProps.get(this).oscillators[i].stop();
@@ -78,7 +81,6 @@ const Vox = (function () {
                 oscillator.start();
                 privateProps.get(this).oscillators.push(oscillator);
             }
-            return freqArray;
         }
         blow() {
             let attack = _attack / 1000;
