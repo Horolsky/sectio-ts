@@ -96,28 +96,41 @@ export class RatioMap extends Array {
    * @param limit max prime factor in system
    * @param range max value for numerator or denominator
    */
-  constructor(limit: plimit, range:number);
+  constructor(limit: plimit, range: number);
   /**
    * create an immutable instance of RatioMap
    * @param data jsonized data
    */
   constructor(data: rm_data);
-  
+
   constructor(payload: any, range?: number) {
-    if (<rm_data>payload.ratios != undefined) {
+    if (
+      payload != undefined &&
+      payload.ratios != undefined &&
+      payload.ratios.length > 0 &&
+      payload.limit != undefined &&
+      payload.range != undefined &&
+      payload.primes != undefined
+    ) {
       super(payload.ratios.length);
       for (let i = 0; i < this.length; i++) this[i] = payload.ratios[i];
       this.limit = payload.limit;
       this.range = payload.range;
       this.primes = payload.primes;
-    } else if (<plimit>payload != undefined && range != undefined) {
+    } 
+    else if (
+      payload != undefined &&
+      typeof payload == "number"
+      ) {
       super();
       const limit = payload;
       /** p-limit index */
       const p_index = RatioMap.allowed_primes.indexOf(limit);
+      if (p_index < 0) throw Error("invalid p-limit parameter");
       /** limited prime factors */
       const l_primes = RatioMap.allowed_primes.slice(0, p_index + 1);
       //range normalization
+      if (typeof range != "number" || range < 0) throw new Error("invalid range parameter");
       if (range > RatioMap.max_ranges[p_index])
         range = RatioMap.max_ranges[p_index];
       //prime powers
@@ -157,11 +170,9 @@ export class RatioMap extends Array {
         }
       }
       Object.freeze(this);
-    }
-    else throw new Error("not enough data");
-    
+    } else throw new Error("not enough data");
   }
-
+  /** return stringified data */
   to_json() {
     return JSON.stringify({
       ratios: this,
@@ -170,7 +181,6 @@ export class RatioMap extends Array {
       primes: this.primes,
     });
   }
-
 }
 
 export default {
