@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 const Vox = (function () {
     const privateProps = new WeakMap();
     const _attack = 50;

@@ -1,7 +1,3 @@
-import math from "./math";
-
-export const canonprimes = [2, 3, 5, 7, 11, 13, 17];
-
 /**
  * immutable class for natural numbers combinations
  * creates a series of real numbers in a mixed-radix numeral system
@@ -80,30 +76,44 @@ export class PositionalCombos extends Array {
     return this.upper_bounds.length;
   }
 }
+/**
+ * immutable class for p-limit approximation of tuning systems
+ * creates a map of ratios in a given params, reduced to one octave
+ */
 export class RatioMap extends Array {
+  /** allowed primes/p-limits */
   static readonly allowed_primes = [2, 3, 5, 7, 11, 13, 17];
+  /** max ranges corresponding to p-limit */
   static readonly max_ranges = [1e7, 1e7, 1e6, 6e5, 2e4, 5e3, 1e3];
+  /** p-limit: max prime factor in system */
   readonly limit: number;
+  /** max value for numerator or denominator, affects precision */
   readonly range: number;
+  /** prime factors of current system */
   readonly primes: number[];
+  /**
+   * create an immutable instance of RatioMap 
+   * @param limit max prime factor in system
+   * @param range max value for numerator or denominator
+   */
   constructor(
     limit: 2 | 3 | 5 | 7 | 11 | 13 | 17,
     range: number
   ) {
     super()
-    
+    /** p-limit index */
     const p_index = RatioMap.allowed_primes.indexOf(limit);
     /** limited prime factors */
     const l_primes = RatioMap.allowed_primes.slice(0, p_index + 1);
     //range normalization
     if (range > RatioMap.max_ranges[p_index]) range = RatioMap.max_ranges[p_index];
-    //combos
+    //prime powers
     const upper_bounds = l_primes.map(p => Math.floor(Math.log(range) / Math.log(p)));
     const lower_bounds = upper_bounds.map(el => el * -1);
-    const combos = new PositionalCombos(upper_bounds, lower_bounds);
+    const prime_powers = new PositionalCombos(upper_bounds, lower_bounds);
 
-    for (let row = 0; row < combos.length; row++) {
-      const combo = combos[row];
+    for (let row = 0; row < prime_powers.length; row++) {
+      const combo = prime_powers[row];
       let num = 1, den = 1;
       for (let i = 0; i < combo.length; i++) {
         combo[i] >= 0 ? num *= (l_primes[i] ** combo[i]) : den *= (l_primes[i] ** -combo[i]);
@@ -111,12 +121,13 @@ export class RatioMap extends Array {
       if (num < den || num > range || den > range) continue;
       const euler = Math.log2(num)-Math.log2(den);
       if (euler < 1){
-        this.push({
+        this.push(<Ratio>{
           num,
           den,
           flt: num / den,
           euler,
-          combo: combo.slice(),
+          primes: l_primes,
+          powers: combo.slice()
         });
       }
     }

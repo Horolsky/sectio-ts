@@ -1,4 +1,3 @@
-import dict from "./types";
 /** synthonic comma (81/80) in log2 form */
 export const comma = Math.log2(1.0125);
 /** canonic primes */
