@@ -92,53 +92,88 @@ export class RatioMap extends Array {
   /** prime factors of current system */
   readonly primes: number[];
   /**
-   * create an immutable instance of RatioMap 
+   * create an immutable instance of RatioMap
    * @param limit max prime factor in system
    * @param range max value for numerator or denominator
    */
-  constructor(
-    limit: 2 | 3 | 5 | 7 | 11 | 13 | 17,
-    range: number
-  ) {
-    super()
-    /** p-limit index */
-    const p_index = RatioMap.allowed_primes.indexOf(limit);
-    /** limited prime factors */
-    const l_primes = RatioMap.allowed_primes.slice(0, p_index + 1);
-    //range normalization
-    if (range > RatioMap.max_ranges[p_index]) range = RatioMap.max_ranges[p_index];
-    //prime powers
-    const upper_bounds = l_primes.map(p => Math.floor(Math.log(range) / Math.log(p)));
-    const lower_bounds = upper_bounds.map(el => el * -1);
-    const prime_powers = new PositionalCombos(upper_bounds, lower_bounds);
+  constructor(limit: plimit, range:number);
+  /**
+   * create an immutable instance of RatioMap
+   * @param data jsonized data
+   */
+  constructor(data: rm_data);
+  
+  constructor(payload: any, range?: number) {
+    if (<rm_data>payload.ratios != undefined) {
+      super(payload.ratios.length);
+      for (let i = 0; i < this.length; i++) this[i] = payload.ratios[i];
+      this.limit = payload.limit;
+      this.range = payload.range;
+      this.primes = payload.primes;
+    } else if (<plimit>payload != undefined && range != undefined) {
+      super();
+      const limit = payload;
+      /** p-limit index */
+      const p_index = RatioMap.allowed_primes.indexOf(limit);
+      /** limited prime factors */
+      const l_primes = RatioMap.allowed_primes.slice(0, p_index + 1);
+      //range normalization
+      if (range > RatioMap.max_ranges[p_index])
+        range = RatioMap.max_ranges[p_index];
+      //prime powers
+      const upper_bounds = l_primes.map((p) =>
+        Math.floor(Math.log(range!) / Math.log(p))
+      );
+      const lower_bounds = upper_bounds.map((el) => el * -1);
+      const prime_powers = new PositionalCombos(upper_bounds, lower_bounds);
 
-    for (let row = 0; row < prime_powers.length; row++) {
-      const combo = prime_powers[row];
-      let num = 1, den = 1;
-      for (let i = 0; i < combo.length; i++) {
-        combo[i] >= 0 ? num *= (l_primes[i] ** combo[i]) : den *= (l_primes[i] ** -combo[i]);
+      this.limit = limit;
+      this.range = range;
+      this.primes = l_primes;
+
+      for (let row = 0; row < prime_powers.length; row++) {
+        const combo = prime_powers[row];
+        let num = 1,
+          den = 1;
+        for (let i = 0; i < combo.length; i++) {
+          combo[i] >= 0
+            ? (num *= l_primes[i] ** combo[i])
+            : (den *= l_primes[i] ** -combo[i]);
+        }
+        if (num < den || num > range || den > range) continue;
+        const euler = Math.log2(num) - Math.log2(den);
+        if (euler < 1) {
+          const record: Ratio = {
+            num,
+            den,
+            flt: num / den,
+            euler,
+            primes: this.primes,
+            powers: combo.slice(),
+          };
+          Object.freeze(record);
+          Object.freeze(record.powers);
+          this.push(record);
+        }
       }
-      if (num < den || num > range || den > range) continue;
-      const euler = Math.log2(num)-Math.log2(den);
-      if (euler < 1){
-        this.push(<Ratio>{
-          num,
-          den,
-          flt: num / den,
-          euler,
-          primes: l_primes,
-          powers: combo.slice()
-        });
-      }
+      Object.freeze(this);
     }
-
-    this.limit = limit;
-    this.range = range;
-    this.primes = l_primes;
+    else throw new Error("not enough data");
+    
   }
+
+  to_json() {
+    return JSON.stringify({
+      ratios: this,
+      limit: this.limit,
+      range: this.range,
+      primes: this.primes,
+    });
+  }
+
 }
 
 export default {
   PositionalCombos,
-  RatioMap
+  RatioMap,
 };
