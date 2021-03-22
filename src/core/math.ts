@@ -64,24 +64,25 @@ export const decimal_to_fraction = (
 ) => {
   const sign = Math.sign(value);
   const absval = Math.abs(value);
-  const proper = absval < 1 ? absval : 1 / absval;
+  const floor = Math.floor(absval);
+  const ceil = floor + 1;
 
   //precision met
   const round = Math.round(absval);
-  if ((round > absval ? round - absval : absval - round) < precision) {
+  if ((round > absval ? round - absval : absval - round) <= precision) {
     return [round * sign, 1];
   }
   /** floor fraction */
-  const f = [0, 1];
+  const f = [floor, 1];
   /** mid fraction */
-  const m = [1, 2];
+  const m = [floor+ceil, 2];
   /** temp fraction */
-  const t = [1, 2];
+  const t = [m[0], 2];
   /** ceil fraction */
-  const c = [1, 1];
-  let i_frac = 0.5;
-  while (Math.abs(proper - i_frac) >= precision) {
-    if (i_frac > proper) (c[0] = m[0]), (c[1] = m[1]);
+  const c = [ceil, 1];
+  let i_frac = m[0] / m[1];
+  while (Math.abs(absval - i_frac) >= precision) {
+    if (i_frac > absval) (c[0] = m[0]), (c[1] = m[1]);
     else (f[0] = m[0]), (f[1] = m[1]);
     t[0] = f[0] + c[0];
     t[1] = f[1] + c[1];
@@ -91,7 +92,6 @@ export const decimal_to_fraction = (
       i_frac = m[0] / m[1];
     }
   }
-  if (absval > 1) m.reverse();
   m[0] *= sign;
   return m;
 };
