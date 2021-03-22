@@ -80,6 +80,54 @@ export class PositionalCombos extends Array {
     return this.upper_bounds.length;
   }
 }
+export class RatioMap extends Array {
+  static readonly allowed_primes = [2, 3, 5, 7, 11, 13, 17];
+  static readonly max_ranges = [1e7, 1e7, 1e6, 6e5, 2e4, 5e3, 1e3];
+  readonly limit: number;
+  readonly range: number;
+  readonly primes: number[];
+  constructor(
+    limit: 2 | 3 | 5 | 7 | 11 | 13 | 17,
+    range: number
+  ) {
+    super()
+    
+    const p_index = RatioMap.allowed_primes.indexOf(limit);
+    /** limited prime factors */
+    const l_primes = RatioMap.allowed_primes.slice(0, p_index + 1);
+    //range normalization
+    if (range > RatioMap.max_ranges[p_index]) range = RatioMap.max_ranges[p_index];
+    //combos
+    const upper_bounds = l_primes.map(p => Math.floor(Math.log(range) / Math.log(p)));
+    const lower_bounds = upper_bounds.map(el => el * -1);
+    const combos = new PositionalCombos(upper_bounds, lower_bounds);
+
+    for (let row = 0; row < combos.length; row++) {
+      const combo = combos[row];
+      let num = 1, den = 1;
+      for (let i = 0; i < combo.length; i++) {
+        combo[i] >= 0 ? num *= (l_primes[i] ** combo[i]) : den *= (l_primes[i] ** -combo[i]);
+      }
+      if (num < den || num > range || den > range) continue;
+      const euler = Math.log2(num)-Math.log2(den);
+      if (euler < 1){
+        this.push({
+          num,
+          den,
+          flt: num / den,
+          euler,
+          combo: combo.slice(),
+        });
+      }
+    }
+
+    this.limit = limit;
+    this.range = range;
+    this.primes = l_primes;
+  }
+}
+
 export default {
   PositionalCombos,
+  RatioMap
 };
