@@ -14,9 +14,11 @@ type plimit = undefined | 2 | 3 | 5 | 7 | 11 | 13 | 17;
 
 /** 
  * prime factorisation 
- * array of tuples [prime, power]
+ * key: prime, value: power
 */
-type factorisation = number[][];
+type factorisation = {
+  [key: string]: number
+}
 
 type Ratio = {
   /** fraction numerator */
