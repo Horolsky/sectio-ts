@@ -1,3 +1,4 @@
+import { factorize } from "./math";
 /**
  * immutable class for natural numbers combinations
  * creates a series of real numbers in a mixed-radix numeral system
@@ -82,11 +83,11 @@ export class PositionalCombos extends Array {
  */
 export class RatioMap extends Array {
   /** allowed primes/p-limits */
-  static readonly allowed_primes = [2, 3, 5, 7, 11, 13, 17];
+  static readonly allowed_primes = [undefined, 2, 3, 5, 7, 11, 13, 17];
   /** max ranges corresponding to p-limit */
   static readonly max_ranges = [1e7, 1e7, 1e6, 6e5, 2e4, 5e3, 1e3];
   /** p-limit: max prime factor in system */
-  readonly limit: number;
+  readonly limit: plimit;
   /** max value for numerator or denominator, affects precision */
   readonly range: number;
   /** prime factors of current system */
@@ -117,20 +118,20 @@ export class RatioMap extends Array {
       this.limit = payload.limit;
       this.range = payload.range;
       this.primes = payload.primes;
-    } 
-    else if (
-      payload != undefined &&
-      typeof payload == "number"
-      ) {
+    } else if (typeof payload == "number") {
       super();
-      const limit = payload;
+      const limit = payload as plimit;
       /** p-limit index */
       const p_index = RatioMap.allowed_primes.indexOf(limit);
       if (p_index < 0) throw Error("invalid p-limit parameter");
       /** limited prime factors */
-      const l_primes = RatioMap.allowed_primes.slice(0, p_index + 1);
+      const l_primes = RatioMap.allowed_primes.slice(
+        1,
+        p_index + 1
+      ) as number[];
       //range normalization
-      if (typeof range != "number" || range < 0) throw new Error("invalid range parameter");
+      if (typeof range != "number" || range < 0)
+        throw new Error("invalid range parameter");
       if (range > RatioMap.max_ranges[p_index])
         range = RatioMap.max_ranges[p_index];
       //prime powers
@@ -150,8 +151,8 @@ export class RatioMap extends Array {
           den = 1;
         for (let i = 0; i < combo.length; i++) {
           combo[i] >= 0
-            ? (num *= l_primes[i] ** combo[i])
-            : (den *= l_primes[i] ** -combo[i]);
+            ? (num *= this.primes[i] ** combo[i])
+            : (den *= this.primes[i] ** -combo[i]);
         }
         if (num < den || num > range || den > range) continue;
         const euler = Math.log2(num) - Math.log2(den);
@@ -159,16 +160,19 @@ export class RatioMap extends Array {
           const record: Ratio = {
             num,
             den,
-            flt: num / den,
             euler,
-            primes: this.primes,
-            powers: combo.slice(),
+            fact: (()=>{
+              const f: factorisation = {};
+              this.primes.forEach((p, i) => f[p] = combo[i]);
+              return f;
+            })()
           };
+          Object.freeze(record.fact);
           Object.freeze(record);
-          Object.freeze(record.powers);
           this.push(record);
         }
       }
+      this.sort((a, b) => a.euler - b.euler);
       Object.freeze(this);
     } else throw new Error("not enough data");
   }
@@ -180,6 +184,81 @@ export class RatioMap extends Array {
       range: this.range,
       primes: this.primes,
     });
+  }
+  /** 
+   * ratio approximation
+   * input value is normalized by mod 1 */
+  approximate(euler: number) {
+    const norm_eul = Math.abs(euler) % 1;
+    //binary approximation search
+    let start = 0, end = this.length - 1, mid: number;
+    while (end - start > 1) {
+        mid = start + Math.trunc((end - start) / 2);
+        norm_eul > this[mid].euler ? start = mid : end = mid;
+    }
+    const record = Math.abs(norm_eul - this[start].euler) < Math.abs(norm_eul - this[end].euler) ? this[start] as Ratio : this[end] as Ratio;
+    return {
+      approximation: record,
+      euler,
+      temperament: euler - record.euler,
+      limit: this.limit,
+      range: this.range
+    } as RationalApproximation;
+  }
+
+  /** 
+   * exact ratio approximation
+   * without periodic normalisation 
+   */
+   approximate_exact(euler: number) {
+    const norm_eul = Math.abs(euler) % 1;
+    const octaves = Math.trunc(euler);
+    const sign = Math.sign(euler);
+    //binary approximation search
+    let start = 0, end = this.length - 1, mid: number;
+    while (end - start > 1) {
+        mid = start + Math.trunc((end - start) / 2);
+        norm_eul > this[mid].euler ? start = mid : end = mid;
+    }
+    const record = Math.abs(norm_eul - this[start].euler) < Math.abs(norm_eul - this[end].euler) ? this[start] as Ratio : this[end] as Ratio;
+    const fact = (()=> {
+      const f: factorisation = {};
+      
+      Object.keys(record.fact).forEach((p,i)=>{
+        f[p] = record.fact[p]*sign
+      });
+      isNaN(f[2]) ? f[2] = octaves : f[2]+= octaves;
+      return f;
+    })() as factorisation;
+
+    let num = 1, den = 1;
+    Object.keys(fact).forEach((p,i)=>{
+      if (fact[p] >=0) num *= (parseInt(p) ** fact[p])
+      else den *= (parseInt(p) ** -fact[p])
+    });
+    const approximation: Ratio = {
+      num, 
+      den,
+      fact,
+      euler: record.euler* sign + octaves,
+    }
+    Object.freeze(approximation.fact);
+    return {
+      approximation,
+      euler,
+      temperament: euler - approximation.euler,
+      limit: this.limit,
+      range: this.range
+    } as RationalApproximation;
+  }
+  static approximate(euler: number, range = 1000) {
+    const fact = factorize(2 ** euler, range);
+    let num = 1, den = 1;
+    Object.keys(fact).forEach((p,i)=>{
+      if (fact[p] >=0) num *= (parseInt(p) ** fact[p])
+      else den *= (parseInt(p) ** -fact[p])
+    });
+    return { num, den, euler: Math.log2(num)-Math.log2(den), fact } as Ratio;
   }
 }
 
