@@ -6,20 +6,37 @@ type rm_data = {
     range: number,
     primes: number[]
 };
+/** 
+ * approximaton prime limit
+ * if undefined, will use fast approximation algo
+ */
+type plimit = undefined | 2 | 3 | 5 | 7 | 11 | 13 | 17;
 
-type plimit = 2 | 3 | 5 | 7 | 11 | 13 | 17;
+/** 
+ * prime factorisation 
+ * array of tuples [prime, power]
+*/
+type factorisation = number[][];
 
 type Ratio = {
   /** fraction numerator */
-  num: number;
+  readonly num: number;
   /** fraction denominator */
-  den: number;
-  /** float representation */
-  flt: number;
+  readonly den: number;
   /** log2 representation */
-  euler: number;
-  /** prime factors */
-  primes: number[];
-  /** prime factor powers */
-  powers: number[];
+  readonly euler: number;
+  /** prime factorisation */
+  readonly fact: factorisation
+};
+/**
+ * extends Ratio type with temperament parameter
+ */
+type RationalApproximation = {
+  /** log2 representation */
+  readonly euler: number,
+  readonly approximation: Ratio,
+  /** difference between actual value and approximation in log2 */
+  readonly temperament: number,
+  readonly limit: plimit,
+  readonly range: number
 };
