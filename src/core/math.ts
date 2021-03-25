@@ -1,7 +1,7 @@
 /** synthonic comma (81/80) in log2 form */
 export const comma = Math.log2(1.0125);
 /** canonic primes */
-export const primes = [undefined, 2, 3, 5, 7, 11, 13, 17]; 
+export const primes = [undefined, 2, 3, 5, 7, 11, 13, 17];
 
 const _gcf = (a: number, b: number): number => (!b ? a : _gcf(b, a % b));
 /**
@@ -18,7 +18,7 @@ export const gcf = (nums: number[]) => {
 };
 /**
  * simplify ratio by gcf
- * @param  {[type]} ratio array of integers
+ * @param  {number[]} ratio array of integers
  */
 export const simplify_ratio = (ratio: number[]) => {
   const factor = Math.abs(gcf(ratio));
@@ -54,7 +54,7 @@ export const get_primes = (range: number, start = 2) => {
  * @param  {number} value       decimal
  * @param  {number} range       max number in fraction, default = 1000
  * @param  {number} precision   approximation precision, default = 1e-16
- * @return {frac}           natural fraction as an array of 2 integers
+ * @return {number[]}           natural fraction as an array of 2 integers
  */
 export const decimal_to_fraction = (
   value: number,
@@ -74,7 +74,7 @@ export const decimal_to_fraction = (
   /** floor fraction */
   const f = [floor, 1];
   /** mid fraction */
-  const m = [floor+ceil, 2];
+  const m = [floor + ceil, 2];
   /** temp fraction */
   const t = [m[0], 2];
   /** ceil fraction */
@@ -115,15 +115,13 @@ export const largest_prime = (val: number) => {
   return max;
 };
 /**
- * get prime factorization 
+ * get prime factorization
  * @param {number}
- * @return {dict} dict where key is prime factor and value is it's power
+ * @return {factorisation} factorisation dict (key: prime, value: power)
  */
 export const factorize_int = (val: number) => {
-  const sign = Math.sign(val);
+  const result: factorisation = val > 0 ? {} : {[-1]: 1};
   val = Math.abs(val);
-  const result: dict = { [sign]: 1 };
-  
   for (let div = 2; div <= val; div++) {
     if (val % div !== 0) continue;
 
@@ -135,32 +133,32 @@ export const factorize_int = (val: number) => {
       }
     }
     if (is_prime) {
-        result[div] = 0;
-        while (val % div === 0) {
-          val /= div;
-          result[div]++;
-        }
+      result[div] = 0;
+      while (val % div === 0) {
+        val /= div;
+        result[div]++;
+      }
     }
   }
   return result;
-}
+};
 
 /**
- * get prime factorization 
+ * get prime factorization
  * @param {number} val
  * @param {number} range
  * @param {number} precision
- * @return {dict} dict where key is prime factor and value is it's power
+ * @return {factorisation} factorisation dict (key: prime, value: power)
  */
- export const factorize_float = (val: number, range=1000, precision=1e-16): dict => {
-     const frac = decimal_to_fraction(val, range, precision);
-     const pos_pf = factorize_int(frac[0]);
-     const neg_pf = factorize_int(frac[1]);
-     Object.keys(neg_pf).map(function(key, index) {
-        if (key != '1') neg_pf[key] *= -1;
-      });
-    return {...pos_pf, ...neg_pf};
- }
+export const factorize = (val: number, range = 1000, precision = 1e-16):factorisation => {
+  const frac = decimal_to_fraction(val, range, precision);
+  const pos_pf = factorize_int(frac[0]);
+  const neg_pf = factorize_int(frac[1]);
+  Object.keys(neg_pf).map(function(key, index) {
+     if (key != '1') neg_pf[key] *= -1;
+   });
+  return {...pos_pf, ...neg_pf};
+};
 export default {
   comma,
   primes,
@@ -171,5 +169,5 @@ export default {
   largest_prime,
   decimal_to_fraction,
   factorize_int,
-  factorize_float
+  factorize,
 };
