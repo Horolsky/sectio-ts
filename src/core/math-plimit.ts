@@ -161,11 +161,11 @@ export class RatioMap extends Array {
             num,
             den,
             euler,
-            fact: (()=>{
+            fact: (() => {
               const f: factorisation = {};
-              this.primes.forEach((p, i) => f[p] = combo[i]);
+              this.primes.forEach((p, i) => (f[p] = combo[i]));
               return f;
-            })()
+            })(),
           };
           Object.freeze(record.fact);
           Object.freeze(record);
@@ -185,80 +185,94 @@ export class RatioMap extends Array {
       primes: this.primes,
     });
   }
-  /** 
+  /**
    * ratio approximation
    * input value is normalized by mod 1 */
   approximate(euler: number) {
     const norm_eul = Math.abs(euler) % 1;
     //binary approximation search
-    let start = 0, end = this.length - 1, mid: number;
+    let start = 0,
+      end = this.length - 1,
+      mid: number;
     while (end - start > 1) {
-        mid = start + Math.trunc((end - start) / 2);
-        norm_eul > this[mid].euler ? start = mid : end = mid;
+      mid = start + Math.trunc((end - start) / 2);
+      norm_eul > this[mid].euler ? (start = mid) : (end = mid);
     }
-    const record = Math.abs(norm_eul - this[start].euler) < Math.abs(norm_eul - this[end].euler) ? this[start] as Ratio : this[end] as Ratio;
+    const record =
+      Math.abs(norm_eul - this[start].euler) <
+      Math.abs(norm_eul - this[end].euler)
+        ? (this[start] as Ratio)
+        : (this[end] as Ratio);
     return {
       approximation: record,
       euler,
       temperament: euler - record.euler,
       limit: this.limit,
-      range: this.range
+      range: this.range,
     } as RationalApproximation;
   }
 
-  /** 
+  /**
    * exact ratio approximation
-   * without periodic normalisation 
+   * without periodic normalisation
    */
-   approximate_exact(euler: number) {
+  approximate_exact(euler: number) {
     const norm_eul = Math.abs(euler) % 1;
     const octaves = Math.trunc(euler);
     const sign = Math.sign(euler);
     //binary approximation search
-    let start = 0, end = this.length - 1, mid: number;
+    let start = 0,
+      end = this.length - 1,
+      mid: number;
     while (end - start > 1) {
-        mid = start + Math.trunc((end - start) / 2);
-        norm_eul > this[mid].euler ? start = mid : end = mid;
+      mid = start + Math.trunc((end - start) / 2);
+      norm_eul > this[mid].euler ? (start = mid) : (end = mid);
     }
-    const record = Math.abs(norm_eul - this[start].euler) < Math.abs(norm_eul - this[end].euler) ? this[start] as Ratio : this[end] as Ratio;
-    const fact = (()=> {
+    const record =
+      Math.abs(norm_eul - this[start].euler) <
+      Math.abs(norm_eul - this[end].euler)
+        ? (this[start] as Ratio)
+        : (this[end] as Ratio);
+    const fact = (() => {
       const f: factorisation = {};
-      
-      Object.keys(record.fact).forEach((p,i)=>{
-        f[p] = record.fact[p]*sign
+
+      Object.keys(record.fact).forEach((p, i) => {
+        f[p] = record.fact[p] * sign;
       });
-      isNaN(f[2]) ? f[2] = octaves : f[2]+= octaves;
+      isNaN(f[2]) ? (f[2] = octaves) : (f[2] += octaves);
       return f;
     })() as factorisation;
 
-    let num = 1, den = 1;
-    Object.keys(fact).forEach((p,i)=>{
-      if (fact[p] >=0) num *= (parseInt(p) ** fact[p])
-      else den *= (parseInt(p) ** -fact[p])
+    let num = 1,
+      den = 1;
+    Object.keys(fact).forEach((p, i) => {
+      if (fact[p] >= 0) num *= parseInt(p) ** fact[p];
+      else den *= parseInt(p) ** -fact[p];
     });
     const approximation: Ratio = {
-      num, 
+      num,
       den,
       fact,
-      euler: record.euler* sign + octaves,
-    }
+      euler: record.euler * sign + octaves,
+    };
     Object.freeze(approximation.fact);
     return {
       approximation,
       euler,
       temperament: euler - approximation.euler,
       limit: this.limit,
-      range: this.range
+      range: this.range,
     } as RationalApproximation;
   }
   static approximate(euler: number, range = 1000) {
     const fact = factorize(2 ** euler, range);
-    let num = 1, den = 1;
-    Object.keys(fact).forEach((p,i)=>{
-      if (fact[p] >=0) num *= (parseInt(p) ** fact[p])
-      else den *= (parseInt(p) ** -fact[p])
+    let num = 1,
+      den = 1;
+    Object.keys(fact).forEach((p, i) => {
+      if (fact[p] >= 0) num *= parseInt(p) ** fact[p];
+      else den *= parseInt(p) ** -fact[p];
     });
-    return { num, den, euler: Math.log2(num)-Math.log2(den), fact } as Ratio;
+    return { num, den, euler: Math.log2(num) - Math.log2(den), fact } as Ratio;
   }
 }
 
