@@ -1,4 +1,4 @@
-export class Vox {
+export default class Vox {
     readonly attack = 50;
     readonly decay = 200;
     readonly compressor: DynamicsCompressorNode;
@@ -88,7 +88,3 @@ export class Vox {
         this.playing = false;
     }
 }
-
-export default {
-    Vox
-};

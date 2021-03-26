@@ -10,7 +10,7 @@ import { obj_not_array } from "../utils/object";
 /**
  * interval ratio class
  */
-export class Ratio {
+export default class Ratio {
   /** fraction [numerator, denominator] */
   private _frac: number[] = [1, 1];
   /** log2 representation */
