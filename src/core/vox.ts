@@ -1,105 +1,94 @@
-const Vox = (function () {
-    const privateProps = new WeakMap();
-    const _attack = 50;
-    const _decay = 200;
-    let _compressor: DynamicsCompressorNode;
-    let _context: AudioContext;
+export class Vox {
+    readonly attack = 50;
+    readonly decay = 200;
+    readonly compressor: DynamicsCompressorNode;
+    readonly context: AudioContext;
+    readonly oscillators: OscillatorNode[];
+    readonly node: GainNode;
+    private _playing: boolean;
+    private _wave: OscillatorType;
+    constructor(
+        context: AudioContext,
+        compressor: DynamicsCompressorNode, 
+        freq: number,
+        wave: OscillatorType
+        ) {
+        const node = context.createGain();
+        node.connect(compressor);
+        node.gain.setValueAtTime(0, context.currentTime);
 
-    class Vox {
-        constructor(
-            context: AudioContext,
-            compressor: DynamicsCompressorNode, 
-            freq: number,
-            wave: OscillatorType
-            ) {
-            const node = context.createGain();
-            node.connect(compressor);
-            node.gain.setValueAtTime(0, context.currentTime);
+        const oscillator = context.createOscillator();
+        oscillator.type = wave;
+        oscillator.frequency.setValueAtTime(freq, context.currentTime); // value in hertz
+        oscillator.connect(node);
+        oscillator.start();
 
-            const oscillator = context.createOscillator();
-            oscillator.type = wave;
-            oscillator.frequency.setValueAtTime(freq, context.currentTime); // value in hertz
-            oscillator.connect(node);
+        
+        this.oscillators = [oscillator];
+        this.node = node;
+        this._playing =  false;
+        this._wave = wave;
+        
+        this.context = context;
+        this.compressor = compressor;
+
+    }
+
+
+    get wave() {
+        return this._wave;
+    }
+    set wave(type) {
+        for (let o = 0; o < this.oscillators.length; o++) {
+            this.oscillators[o].type = type;
+        }
+        this._wave = type;
+    }
+    get gain() {
+        return this.node.gain;
+    }
+    get playing() {
+        return this._playing;
+    }
+    set playing(val: boolean) {
+        this._playing = val;
+    }
+
+    setChord(freqArray: number[]) {
+        //cleaning
+        for (let i = 0; i < this.oscillators.length; i++) {
+            this.oscillators[i].stop();
+        }
+        this.oscillators.splice(0,this.oscillators.length);
+        // setting chord
+        for (let i = 0; i < freqArray.length; i++) {
+            const oscillator = this.context.createOscillator();
+            oscillator.type = this.wave;
+            oscillator.frequency.setValueAtTime(freqArray[i], this.context.currentTime); // value in hertz
+            oscillator.connect(this.node);
             oscillator.start();
-
-            privateProps.set(this, {
-                oscillators: [oscillator],
-                node: node,
-                playing: false,
-                wave: wave
-            });
-
-            _context = context;
-            _compressor = compressor;
-
-        }
-
-        get context() {
-            return _context;
-        }
-        get compressor() {
-            return _compressor;
-        }
-        get node() {
-            return privateProps.get(this).node;
-        }
-        get gain() {
-            return privateProps.get(this).node.gain;
-        }
-        get oscillators() {
-            return privateProps.get(this).oscillators;
-        }
-        get playing() {
-            return privateProps.get(this).playing;
-        }
-        set playing(bool) {
-            privateProps.get(this).playing = bool;
-        }
-        get wave() {
-            return privateProps.get(this).wave;
-        }
-        set wave(type) {
-            for (let o = 0; o < this.oscillators.length; o++) {
-                this.oscillators[o].type = type;
-            }
-            privateProps.get(this).wave = type;
-        }
-
-        setChord(freqArray: number[]) {
-            //cleaning
-            for (let i = 0; i < privateProps.get(this).oscillators.length; i++) {
-                privateProps.get(this).oscillators[i].stop();
-            }
-            privateProps.get(this).oscillators = [];
-            // setting chord
-            for (let i = 0; i < freqArray.length; i++) {
-                const oscillator = _context.createOscillator();
-                oscillator.type = this.wave;
-                oscillator.frequency.setValueAtTime(freqArray[i], _context.currentTime); // value in hertz
-                oscillator.connect(this.node);
-                oscillator.start();
-                privateProps.get(this).oscillators.push(oscillator);
-            }
-        }
-        blow() {
-            let attack = _attack / 1000;
-            attack = attack * (1 - this.gain.value);
-            this.gain.cancelScheduledValues(_context.currentTime);
-            this.gain.setValueAtTime(this.gain.value, _context.currentTime);
-            this.gain.linearRampToValueAtTime(1, _context.currentTime + attack);
-            this.playing = true;
-            if (!this.playing) this.release();
-        }
-        release() {
-            let decay = _decay / 1000;
-            decay = decay * this.gain.value;
-            this.gain.cancelScheduledValues(_context.currentTime);
-            this.gain.setValueAtTime(this.gain.value, _context.currentTime);
-            this.gain.linearRampToValueAtTime(0, _context.currentTime + decay);
-            this.playing = false;
+            this.oscillators.push(oscillator);
         }
     }
-    return Vox;
-})();
+    blow() {
+        let attack = this.attack / 1000;
+        attack = attack * (1 - this.gain.value);
+        this.gain.cancelScheduledValues(this.context.currentTime);
+        this.gain.setValueAtTime(this.gain.value, this.context.currentTime);
+        this.gain.linearRampToValueAtTime(1, this.context.currentTime + attack);
+        this.playing = true;
+        if (!this.playing) this.release();
+    }
+    release() {
+        let decay = this.decay / 1000;
+        decay = decay * this.gain.value;
+        this.gain.cancelScheduledValues(this.context.currentTime);
+        this.gain.setValueAtTime(this.gain.value, this.context.currentTime);
+        this.gain.linearRampToValueAtTime(0, this.context.currentTime + decay);
+        this.playing = false;
+    }
+}
 
-export default Vox;
+export default {
+    Vox
+};
