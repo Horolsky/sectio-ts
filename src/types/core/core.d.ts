@@ -10,7 +10,7 @@ type rm_data = {
  * approximaton prime limit
  * if undefined, will use fast approximation algo
  */
-type plimit = undefined | 2 | 3 | 5 | 7 | 11 | 13 | 17;
+type plimit = 2 | 3 | 5 | 7 | 11 | 13 | 17;
 
 /** 
  * prime factorisation 
@@ -20,7 +20,7 @@ type factorisation = {
   [key: string]: number
 }
 
-type Ratio = {
+type ratio = {
   /** fraction numerator */
   readonly num: number;
   /** fraction denominator */
@@ -31,7 +31,7 @@ type Ratio = {
   readonly fact: factorisation
 };
 /**
- * extends Ratio type with temperament parameter
+ * extends Ratio class with temperament parameter
  */
 type RationalApproximation = {
   /** log2 representation */
