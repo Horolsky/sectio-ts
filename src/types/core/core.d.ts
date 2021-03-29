@@ -10,9 +10,8 @@ type plimit = 2 | 3 | 5 | 7 | 11 | 13 | 17;
  * prime factorisation 
  * key: prime, value: power
 */
-type factorisation = {
-  [key: string]: number
-}
+type factorisation = map_numeric
+
 //type factorisation  = Map<number, number>;
 type ratio = {
   /** fraction numerator */
@@ -81,19 +80,36 @@ type canon_schema = {
   sections: section[]
 }
 
+
+interface intrv_incendence {
+  [key: number]: number[][]
+}
+interface ratio_dict {
+  [key: number]: Ratio | RationalApproximation,
+}
 type canon_cache = {
   /** number of sections */
   size: number,
-  /** adjacency matrix of generator intervals */
-  generators_mt: number[],
+  /** section ids can be uneven */
+  id_list: number[],
+  /** rational model (no temperament) */
+  rational: boolean,
   /** complete adjacency matrix of sections relations */
   relations_mt: number[],
+  /** interval incedence list where values are list of sections id tuples*/
+  interval_incedence: intrv_incendence,
   /** parent list (index - section, value - parent's id) */
-  parent_list: number[],
-  /** factorisation primes*/
-  primes: [],
-  /** adjacency matrix of factorisaion vectors */
-  factorisation_mt: number[][],
-  /** full system as ratio in factorisation form */
-  super_ratio_fct: number[]
+  parent_list: dict<number, null | number>,
+  /** heuristic property: ratiodict generated from ratiomap*/
+  ratiodict?: ratio_dict,
+  /** heuristic property: adjacency matrix of heuristic generator intervals */
+  generators?: number[],
+  /** heuristic property: list of factorisation primes for unlim approximations or rational systems */
+  primes?: number[],
+  /** rational canon property: adjacency matrix of factorisaion vectors */
+  factorisation_mt?: number[][],
+  /** rational canon property: full system as ratio in factorisation form */
+  super_ratio_fct?: number[]
 }
+
+
