@@ -1,13 +1,12 @@
 import { factorize } from "./math";
 import PositionalCombos from './combos'
+import { APPROX_PRIMES } from "./constants";
 
 /**
  * immutable class for p-limit approximation of tuning systems
  * creates a map of ratios in a given params, reduced to one octave
  */
 export default class RatioMap extends Array {
-  /** allowed primes/p-limits */
-  static readonly allowed_primes = [2, 3, 5, 7, 11, 13, 17];
   /** max ranges corresponding to p-limit */
   static readonly max_ranges = [1e7, 1e7, 1e6, 6e5, 6e3, 1e3, 300];
   /** p-limit: max prime factor in system */
@@ -46,10 +45,10 @@ export default class RatioMap extends Array {
       super();
       const limit = payload as plimit;
       /** p-limit index */
-      const p_index = RatioMap.allowed_primes.indexOf(limit);
+      const p_index = APPROX_PRIMES.indexOf(limit);
       if (p_index < 0) throw Error("invalid p-limit parameter");
       /** limited prime factors */
-      const l_primes = RatioMap.allowed_primes.slice(
+      const l_primes = APPROX_PRIMES.slice(
         0,
         p_index + 1
       ) as number[];
@@ -158,14 +157,14 @@ export default class RatioMap extends Array {
     const fact: factorisation = {};
     let num = 1,
       den = 1;
-    Object.keys(record.fact).forEach((p, i) => {
+    for (const p in record.fact) {
       fact[p] = record.fact[p] * sign;
       fact[p] >= 0
         ? (num *= parseInt(p) ** fact[p])
         : (den *= parseInt(p) ** -fact[p]);
-    });
+    }
     if (octaves > 0) {
-      "2" in fact ? (fact[2] = octaves) : (fact[2] += octaves);
+      2 in fact ? (fact[2] = octaves) : (fact[2] += octaves);
       num *= 2 ** octaves;
     }
 
@@ -188,10 +187,10 @@ export default class RatioMap extends Array {
     const fact = factorize(2 ** euler, range);
     let num = 1,
       den = 1;
-    Object.keys(fact).forEach((p, i) => {
+    for (const p in fact) {
       if (fact[p] >= 0) num *= parseInt(p) ** fact[p];
       else den *= parseInt(p) ** -fact[p];
-    });
+    }
     return { num, den, euler: Math.log2(num) - Math.log2(den), fact } as ratio;
   }
 }

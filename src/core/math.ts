@@ -1,8 +1,3 @@
-/** synthonic comma (81/80) in log2 form */
-export const comma = Math.log2(1.0125);
-/** canonic primes */
-export const primes = [undefined, 2, 3, 5, 7, 11, 13, 17];
-
 export const is_int = (val: number):boolean => { return val % 1 === 0 };
 
 const _gcf = (a: number, b: number): number => (!b ? a : _gcf(b, a % b));
@@ -156,14 +151,13 @@ export const factorize = (val: number, range = 1000, precision = 1e-16):factoris
   const frac = decimal_to_fraction(val, range, precision);
   const pos_pf = factorize_int(frac[0]);
   const neg_pf = factorize_int(frac[1]);
-  Object.keys(neg_pf).forEach(key => {
+  for (const key in neg_pf){
     if (key != '1') neg_pf[key] *= -1;
-  });
+  }
+  
   return {...pos_pf, ...neg_pf};
 };
 export default {
-  comma,
-  primes,
   is_int,
   gcf,
   simplify_ratio,

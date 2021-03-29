@@ -7,6 +7,19 @@ import {
 } from "./math";
 import { obj_not_array } from "../utils/object";
 
+export const valid_frac = (frac: any) => {
+  return (
+    Array.isArray(frac) &&
+  frac.length === 2 &&
+  typeof frac[0] === 'number' &&
+  typeof frac[1] === 'number' &&
+  frac[0] % 1 === 0 &&
+  frac[1] % 1 === 0 &&
+  frac[0] >= 0 &&
+  frac[1] > 0
+  )
+}
+
 /**
  * interval ratio class
  */
@@ -53,14 +66,14 @@ export default class Ratio {
     let num: number, den: number, euler: number, fact: factorisation;
     if (obj_not_array(payload)) {
       fact = payload as factorisation;
-      if (fact["0"] < 0) throw new Error("division by zero");
+      if (fact[0] < 0) throw new Error("division by zero");
       (num = 1), (den = 1);
-      Object.keys(fact).forEach((p) => {
+      for (const p in fact) {
         if (!is_int(fact[p]) || !is_prime(parseInt(p)))
           throw new Error("corrupted factorisation");
         if (fact[p] >= 0) num *= parseInt(p) ** fact[p];
         else den *= parseInt(p) ** -fact[p];
-      });
+      }
       euler = Math.log2(num) - Math.log2(den);
     } else if (Array.isArray(payload) && payload.length == 2) {
     /** payload as natural fraction */
@@ -70,9 +83,9 @@ export default class Ratio {
       if (den === 0) throw new Error("division by zero");
       const pos_pf = factorize_int(num);
       const neg_pf = den != 1 ? factorize_int(den) : {};
-      Object.keys(neg_pf).forEach((key) => {
-        if (key != "1") neg_pf[key] *= -1;
-      });
+      for (const key in neg_pf){
+        if (key != '1') neg_pf[key] *= -1;
+      }
       fact = { ...pos_pf, ...neg_pf };
       euler = Math.log2(num) - Math.log2(den);
     } else if (typeof payload === "number") {
@@ -80,10 +93,10 @@ export default class Ratio {
       euler = payload;
       fact = factorize(2 ** euler);
       (num = 1), (den = 1);
-      Object.keys(fact).forEach((p) => {
+      for (const p in fact) {
         if (fact[p] >= 0) num *= parseInt(p) ** fact[p];
         else den *= parseInt(p) ** -fact[p];
-      });
+      }
     } else if (payload instanceof Ratio) {
     /** payload as other Ratio */
       euler = payload._euler;
@@ -100,9 +113,9 @@ export default class Ratio {
   /** immutable factorisation map {[prime]:power}, assignable */
   get fact() {
     const wrapper = Object.create(null);
-    Object.keys(this._fact).forEach((p) => {
+    for (const p in this._fact) {
       wrapper[p] = this._fact[p];
-    });
+    }
     return Object.freeze(wrapper);
   }
   set fact(val: factorisation) {
@@ -166,27 +179,19 @@ export default class Ratio {
   static mul(a: any, b: any) {
     a = Ratio.get(a);
     b = Ratio.get(b);
-    const fact: factorisation = {};
-    const primes = new Set<string>([
-      ...Object.keys(a.fact),
-      ...Object.keys(b.fact),
-    ]);
-    primes.forEach((p) => {
+    const fact: factorisation = {...a.fact, ...b.fact};//keys
+    for (const p in fact)  { //values
       fact[p] = (a.fact[p] || 0) + (b.fact[p] || 0);
-    });
+    }
     return new Ratio(fact);
   }
   static div(a: any, b: any) {
     a = Ratio.get(a);
     b = Ratio.get(b);
-    const fact: factorisation = {};
-    const primes = new Set<string>([
-      ...Object.keys(a.fact),
-      ...Object.keys(b.fact),
-    ]);
-    primes.forEach((p) => {
+    const fact: factorisation = {...a.fact, ...b.fact};
+    for (const p in fact)  {
       fact[p] = (a.fact[p] || 0) - (b.fact[p] || 0);
-    });
+    }
     return new Ratio(fact);
   }
   static logmod(a: any, b: any) {
@@ -198,10 +203,10 @@ export default class Ratio {
   static pow(a: any, pow: number) {
     if (!is_int(pow)) throw new Error("irrational arithmetic");
     a = Ratio.get(a);
-    const fact: factorisation = {};
-    Object.keys(a.fact).forEach((p) => {
+    const fact: factorisation = {...a.fact};
+    for (const p in fact) {
       fact[p] = a.fact[p] * pow;
-    });
+    }
     return new Ratio(fact);
   }
   static get(arg: any): Ratio {
