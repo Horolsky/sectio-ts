@@ -6,6 +6,18 @@ export const S_COMMA = Math.log2(81) - Math.log2(80)
 export const P_COMMA = Math.log2(531441) - Math.log2(524288)
 /** canonic approximation primes */
 export const APPROX_PRIMES = [2, 3, 5, 7, 11, 13, 17];
+/**
+ * log2 values of primes from 2 to 17
+ */
+export const PRIMES_LOG2: map_numeric = {
+    2: 1,
+    3: Math.log2(3),
+    5: Math.log2(5),
+    7: Math.log2(7),
+    11: Math.log2(11),
+    13: Math.log2(13),
+    17: Math.log2(17)
+}
 
 export default {
     PREC,

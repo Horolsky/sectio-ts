@@ -1,9 +1,26 @@
-export const is_int = (val: number):boolean => { return val % 1 === 0 };
+import { PREC } from "./constants";
 
-const _gcf = (a: number, b: number): number => (!b ? a : _gcf(b, a % b));
 /**
- * greatest common factor
+ * valid fraction: tuple of integers
+ * @param frac 
  */
+export const valid_frac = (frac: any) => {
+  return (
+    Array.isArray(frac) &&
+    frac.length === 2 &&
+    typeof frac[0] === 'number' &&
+    typeof frac[1] === 'number' &&
+    frac[0] % 1 === 0 &&
+    frac[1] % 1 === 0 &&
+    frac[0] >= 0 &&
+    frac[1] > 0
+  )
+}
+
+export const is_int = (val: number):boolean => { return val % 1 === 0 };
+/** local 2d gcf */
+const _gcf = (a: number, b: number): number => (!b ? a : _gcf(b, a % b));
+/** greatest common factor */
 export const gcf = (nums: number[]) => {
   if (nums.length == 0) return 1;
   let result = nums[0];
@@ -19,7 +36,7 @@ export const gcf = (nums: number[]) => {
  */
 export const simplify_ratio = (ratio: number[]) => {
   const factor = Math.abs(gcf(ratio));
-  return ratio.map((el) => el / factor);
+  return ratio.map((el) => el / factor) as fraction;
 };
 /**
  * prime check
@@ -57,7 +74,7 @@ export const decimal_to_fraction = (
   value: number,
   range: number = 1000,
   precision: number = 1e-16
-) => {
+):fraction => {
   const sign = Math.sign(value);
   const absval = Math.abs(value);
   const floor = Math.floor(absval);
@@ -89,7 +106,7 @@ export const decimal_to_fraction = (
     }
   }
   m[0] *= sign;
-  return m;
+  return m as fraction;
 };
 /**
  * largest prime factor
@@ -111,52 +128,7 @@ export const largest_prime = (val: number) => {
   max = Math.max(val, max);
   return max;
 };
-/**
- * get prime factorization
- * @param {number}
- * @return {factorisation} factorisation dict (key: prime, value: power)
- */
-export const factorize_int = (val: number) => {
-  const result: factorisation = val > 0 ? {} : {[-1]: 1};
-  val = Math.abs(val);
-  for (let div = 2; div <= val; div++) {
-    if (val % div !== 0) continue;
 
-    let is_prime = true;
-    for (let i = 2; i <= Math.sqrt(div); i++) {
-      if (div % i === 0) {
-        is_prime = false;
-        break;
-      }
-    }
-    if (is_prime) {
-      result[div] = 0;
-      while (val % div === 0) {
-        val /= div;
-        result[div]++;
-      }
-    }
-  }
-  return result;
-};
-
-/**
- * get prime factorization
- * @param {number} val
- * @param {number} range
- * @param {number} precision
- * @return {factorisation} factorisation dict (key: prime, value: power)
- */
-export const factorize = (val: number, range = 1000, precision = 1e-16):factorisation => {
-  const frac = decimal_to_fraction(val, range, precision);
-  const pos_pf = factorize_int(frac[0]);
-  const neg_pf = factorize_int(frac[1]);
-  for (const key in neg_pf){
-    if (key != '1') neg_pf[key] *= -1;
-  }
-  
-  return {...pos_pf, ...neg_pf};
-};
 export default {
   is_int,
   gcf,
@@ -164,7 +136,5 @@ export default {
   is_prime,
   get_primes,
   largest_prime,
-  decimal_to_fraction,
-  factorize_int,
-  factorize,
+  decimal_to_fraction
 };

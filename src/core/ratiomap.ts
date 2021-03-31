@@ -1,6 +1,8 @@
-import { factorize } from "./math";
+import { is_int } from './math';
 import PositionalCombos from './combos'
 import { APPROX_PRIMES } from "./constants";
+import Ratio from "./ratio";
+import {get_exact_euler} from './pfv-methods'
 
 /**
  * immutable class for p-limit approximation of tuning systems
@@ -70,7 +72,7 @@ export default class RatioMap extends Array {
 
       for (let row = 0; row < prime_powers.length; row++) {
         const combo = prime_powers[row];
-        const fact: factorisation = {};
+        const fact: pfv = {};
         let num = 1,
           den = 1;
         this.primes.forEach((p, i) => {
@@ -85,8 +87,8 @@ export default class RatioMap extends Array {
           num > 2 * den
         )
           continue;
-        const euler = Math.log2(num) - Math.log2(den);
-        const record: ratio = { num, den, euler, fact };
+        const euler = get_exact_euler(fact);
+        const record: rm_record = { euler, fact };
         Object.freeze(record);
         Object.freeze(record.fact);
         this.push(record);
@@ -105,41 +107,22 @@ export default class RatioMap extends Array {
       primes: this.primes,
     });
   }
-  /**
-   * ratio approximation
-   * input value is normalized by mod 1 */
-  approximate(euler: number) {
-    const norm_eul = Math.abs(euler) % 1;
-    //binary approximation search
-    let start = 0,
-      end = this.length - 1,
-      mid: number;
-    while (end - start > 1) {
-      mid = start + Math.trunc((end - start) / 2);
-      norm_eul > this[mid].euler ? (start = mid) : (end = mid);
-    }
-    const record =
-      Math.abs(norm_eul - this[start].euler) <
-      Math.abs(norm_eul - this[end].euler)
-        ? (this[start] as ratio)
-        : (this[end] as ratio);
-    return {
-      approximation: record,
-      euler,
-      temperament: euler - record.euler,
-      limit: this.limit,
-      range: this.range,
-    } as RationalApproximation;
-  }
 
   /**
-   * exact ratio approximation
-   * without periodic normalisation
+   * approximate by given euler value
+   * return rational factorisation 
+   * with temperament stored on p-2 power value
+   * @param euler 
+   * @returns 
    */
-  approximate_exact(euler: number) {
+  approximate(euler: number) {
+    if (typeof euler != "number") throw new Error("invalid input type");
+    
     const norm_eul = Math.abs(euler) % 1;
     const octaves = Math.trunc(euler);
-    const sign = Math.sign(euler);
+    if (is_int(euler)){
+      return euler > 0 ? {2:euler} : {[-1]: 1, 2: euler};
+    }
     //binary approximation search
     let start = 0,
       end = this.length - 1,
@@ -151,46 +134,14 @@ export default class RatioMap extends Array {
     const record =
       Math.abs(norm_eul - this[start].euler) <
       Math.abs(norm_eul - this[end].euler)
-        ? (this[start] as ratio)
-        : (this[end] as ratio);
+        ? (this[start] as rm_record)
+        : (this[end] as rm_record);
 
-    const fact: factorisation = {};
-    let num = 1,
-      den = 1;
-    for (const p in record.fact) {
-      fact[p] = record.fact[p] * sign;
-      fact[p] >= 0
-        ? (num *= parseInt(p) ** fact[p])
-        : (den *= parseInt(p) ** -fact[p]);
-    }
-    if (octaves > 0) {
-      2 in fact ? (fact[2] = octaves) : (fact[2] += octaves);
-      num *= 2 ** octaves;
-    }
-
-    const approximation: ratio = {
-      num,
-      den,
-      fact,
-      euler: record.euler * sign + octaves,
-    };
-    Object.freeze(approximation.fact);
-    return {
-      approximation,
-      euler,
-      temperament: euler - approximation.euler,
-      limit: this.limit,
-      range: this.range,
-    } as RationalApproximation;
-  }
-  static approximate(euler: number, range = 1000) {
-    const fact = factorize(2 ** euler, range);
-    let num = 1,
-      den = 1;
-    for (const p in fact) {
-      if (fact[p] >= 0) num *= parseInt(p) ** fact[p];
-      else den *= parseInt(p) ** -fact[p];
-    }
-    return { num, den, euler: Math.log2(num) - Math.log2(den), fact } as ratio;
+    const fact: pfv = {};
+    for (const p in record.fact) fact[p] = euler > 0 && record.fact[p] != 0 ? record.fact[p] : -record.fact[p];
+    const temperament = euler - record.euler * Math.sign(euler) + octaves;
+    2 in fact ? (fact[2] += octaves+temperament) : (fact[2] = octaves+temperament) ;
+    
+    return new Ratio(fact);
   }
 }

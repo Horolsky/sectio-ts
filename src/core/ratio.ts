@@ -1,51 +1,25 @@
 import {
-  is_int,
-  is_prime,
   simplify_ratio,
-  factorize,
-  factorize_int,
+  valid_frac
 } from "./math";
-import { obj_not_array } from "../utils/object";
-
-export const valid_frac = (frac: any) => {
-  return (
-    Array.isArray(frac) &&
-  frac.length === 2 &&
-  typeof frac[0] === 'number' &&
-  typeof frac[1] === 'number' &&
-  frac[0] % 1 === 0 &&
-  frac[1] % 1 === 0 &&
-  frac[0] >= 0 &&
-  frac[1] > 0
-  )
-}
+import PFV from './pfv-methods'
+const private_props = new WeakMap();
 
 /**
- * interval ratio class
+ * wrapper around pfv vector
  */
 export default class Ratio {
-  /** fraction [numerator, denominator] */
-  private _frac: number[] = [1, 1];
-  /** log2 representation */
-  private _euler: number = 0;
-  /** prime factorisation */
-  private _fact: factorisation = { 1: 1 };
-
   /**
-   * create Ratio instance with log2 value
-   * @param euler
-   */
-  constructor(euler: number);
-  /**
-   * create Ratio instance with factorisation map
+   * create Ratio instance with pfv map
    * @param fact
    */
-  constructor(fact: factorisation);
+  constructor(fact: pfv);
   /**
-   * create Ratio instance with natural fraction [numerator, denominator]
+   * create Ratio instance with natural fraction [numerator, denominator].
+   * This method is much slower than pfv
    * @param frac
    */
-  constructor(frac: number[]);
+  constructor(frac: fraction);
   /**
    * create Ratio instance from other instance (make a copy)
    * @param ratio
@@ -58,162 +32,70 @@ export default class Ratio {
    */
   constructor(num: number, den: number);
   constructor(arg1: any, arg2?: any) {
-    this.update(arg2 ? [arg1, arg2] : arg1);
-  }
-
-  update(payload?: Ratio | factorisation | number | number[]) {
     /** payload as factorisation */
-    let num: number, den: number, euler: number, fact: factorisation;
-    if (obj_not_array(payload)) {
-      fact = payload as factorisation;
-      if (fact[0] < 0) throw new Error("division by zero");
-      (num = 1), (den = 1);
-      for (const p in fact) {
-        if (!is_int(fact[p]) || !is_prime(parseInt(p)))
-          throw new Error("corrupted factorisation");
-        if (fact[p] >= 0) num *= parseInt(p) ** fact[p];
-        else den *= parseInt(p) ** -fact[p];
-      }
-      euler = Math.log2(num) - Math.log2(den);
-    } else if (Array.isArray(payload) && payload.length == 2) {
+    let fact: pfv;
+    if (PFV.is_valid(arg1) && !arg2) {
+      fact = arg1 as pfv;
+    } 
+    else if (valid_frac([arg1, arg2])) {
     /** payload as natural fraction */
-      payload = simplify_ratio(payload);
-      (num = payload[0]), (den = payload[1]);
-      if (!is_int(den) || !is_int(num)) throw new Error("invalid fraction");
-      if (den === 0) throw new Error("division by zero");
-      const pos_pf = factorize_int(num);
-      const neg_pf = den != 1 ? factorize_int(den) : {};
-      for (const key in neg_pf){
-        if (key != '1') neg_pf[key] *= -1;
-      }
+      const frac = simplify_ratio([arg1, arg2] as fraction);
+      const pos_pf = PFV.factorize_int(frac[0]);
+      const neg_pf = frac[0] != 1 ? PFV.factorize_int(frac[1]) : {};
+      for (const key in neg_pf) if (key != '1') neg_pf[key] *= -1;
       fact = { ...pos_pf, ...neg_pf };
-      euler = Math.log2(num) - Math.log2(den);
-    } else if (typeof payload === "number") {
-    /** payload as euler */
-      euler = payload;
-      fact = factorize(2 ** euler);
-      (num = 1), (den = 1);
-      for (const p in fact) {
-        if (fact[p] >= 0) num *= parseInt(p) ** fact[p];
-        else den *= parseInt(p) ** -fact[p];
-      }
-    } else if (payload instanceof Ratio) {
+    } 
+    else if (arg1 instanceof Ratio && !arg2) {
     /** payload as other Ratio */
-      euler = payload._euler;
-      fact = Object.create(payload._fact);
-      num = payload._frac[0];
-      den = payload._frac[1];
+      fact = Object.create(arg1.fact);
     } else {
       throw new Error("corrupted Ratio parameters");
     }
-    this._fact = fact;
-    this._frac = [num, den];
-    this._euler = euler;
+    private_props.set(this, fact);
   }
-  /** immutable factorisation map {[prime]:power}, assignable */
+
+  /** immutable factorisation vector {[prime]:power} */
   get fact() {
-    const wrapper = Object.create(null);
-    for (const p in this._fact) {
-      wrapper[p] = this._fact[p];
-    }
-    return Object.freeze(wrapper);
+    return Object.freeze(Object.create(private_props.get(this)));
   }
-  set fact(val: factorisation) {
-    this.update(val);
+  /** ratio numerator */
+  get frac() {
+    return PFV.get_fraction(this.fact);
   }
-  /** log2 value, assignable */
-  get euler() {
-    return this._euler;
-  }
-  set euler(val: number) {
-    this.update(val);
-  }
-  /** ratio numerator, assignable */
-  get num() {
-    return this._frac[0];
-  }
-  set num(val: number) {
-    this.update([val, this._frac[1]]);
-  }
-  /** ratio denominator, assignable */
-  get den() {
-    return this._frac[1];
-  }
-  set den(val: number) {
-    if (val === 0) throw new Error("division by zero");
-    this.update([val, this._frac[0]]);
-  }
+  /** decimal fraction value */
   get decimal() {
-    return this._frac[0] / this._frac[1];
+    return PFV.get_decimal(this.fact);
+  }
+  /** exact log2 value */
+  get exact_euler() {
+    return PFV.get_exact_euler(this.fact);
+  }
+  /** log2 value disregarding temperament */
+  get rational_euler() {
+    return PFV.get_rational_euler(this.fact);
+  }
+  /** temperament log2 value */
+  get temperament() {
+    return PFV.get_temperament(this.fact);
+  }
+  /** */
+  get primes() {
+    return PFV.get_exact_primes(this.frac);
   }
 
-  add(other: Ratio | number | number[] | factorisation) {
-    return Ratio.add(this, other);
+  add(other: Ratio | pfv) {
+    return new Ratio(PFV.add(this.fact, other instanceof Ratio ? other.fact : other));
   }
-  sub(other: Ratio | number | number[] | factorisation) {
-    return Ratio.sub(this, other);
+  sub(other: Ratio | pfv) {
+    return new Ratio(PFV.sub(this.fact, other instanceof Ratio ? other.fact : other));
   }
-  mul(other: Ratio | number | number[] | factorisation) {
-    return Ratio.mul(this, other);
+  mod(other: Ratio | pfv) {
+    return new Ratio(PFV.mod(this.fact, other instanceof Ratio ? other.fact : other));
   }
-  div(other: Ratio | number | number[] | factorisation) {
-    return Ratio.div(this, other);
+  scale(scalar: number) {
+    return new Ratio(PFV.scale(this.fact, scalar));
   }
-  logmod(mod: Ratio | number | number[] | factorisation) {
-    return Ratio.logmod(this, mod);
-  }
-  pow(pow: number) {
-    return Ratio.pow(this, pow);
-  }
-
-  static add(a: any, b: any) {
-    a = Ratio.get(a);
-    b = Ratio.get(b);
-    return new Ratio(a.num * b.den + b.num * a.den, a.den * b.den);
-  }
-  static sub(a: any, b: any) {
-    a = Ratio.get(a);
-    b = Ratio.get(b);
-    return new Ratio(a.num * b.den - b.num * a.den, a.den * b.den);
-  }
-  static mul(a: any, b: any) {
-    a = Ratio.get(a);
-    b = Ratio.get(b);
-    const fact: factorisation = {...a.fact, ...b.fact};//keys
-    for (const p in fact)  { //values
-      fact[p] = (a.fact[p] || 0) + (b.fact[p] || 0);
-    }
-    return new Ratio(fact);
-  }
-  static div(a: any, b: any) {
-    a = Ratio.get(a);
-    b = Ratio.get(b);
-    const fact: factorisation = {...a.fact, ...b.fact};
-    for (const p in fact)  {
-      fact[p] = (a.fact[p] || 0) - (b.fact[p] || 0);
-    }
-    return new Ratio(fact);
-  }
-  static logmod(a: any, b: any) {
-    const ar = new Ratio(a);
-    const br = Ratio.get(b);
-    while (ar.num / ar.den > br.num / br.den) ar.div(br);
-    return ar;
-  }
-  static pow(a: any, pow: number) {
-    if (!is_int(pow)) throw new Error("irrational arithmetic");
-    a = Ratio.get(a);
-    const fact: factorisation = {...a.fact};
-    for (const p in fact) {
-      fact[p] = a.fact[p] * pow;
-    }
-    return new Ratio(fact);
-  }
-  static get(arg: any): Ratio {
-    if (arg instanceof Ratio) return arg;
-    else return new Ratio(arg);
-  }
-  static copy(arg: Ratio): Ratio {
+  copy(arg: Ratio): Ratio {
     return new Ratio(arg);
   }
 }
