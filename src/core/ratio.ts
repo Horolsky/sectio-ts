@@ -60,7 +60,7 @@ export default class Ratio {
     } 
     else if (arg1 instanceof Ratio && arg2 == undefined) {
     /** payload as other Ratio */
-      fact = {...arg1.fact};
+      fact = arg1.fact;
     }
     else if (typeof arg1 === 'number' && arg2 == undefined){
       /** payload as euler value */
@@ -113,7 +113,7 @@ export default class Ratio {
   scale(scalar: number) {
     return new Ratio(PFV.scale(this.fact, scalar));
   }
-  copy(arg: Ratio): Ratio {
-    return new Ratio(arg);
+  copy(): Ratio {
+    return new Ratio(this);
   }
 }

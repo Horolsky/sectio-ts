@@ -154,6 +154,8 @@ export const get_fraction = (fact: pfv): fraction => {
 };
 /** factorisation vector validity */
 export const is_valid = (fact: pfv) => {
+  if (typeof fact != "object") return false;
+  if (Object.keys(fact).length == 0) return false;
   for (const key in fact) {
     const p = parseFloat(key);
     if (!is_prime(p) || (p != 2 && !is_int(fact[p]))) return false;
