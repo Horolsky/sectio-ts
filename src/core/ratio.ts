@@ -31,24 +31,42 @@ export default class Ratio {
    * @param den
    */
   constructor(num: number, den: number);
+  /**
+   * create Ratio instance with 1-d factorisation
+   * @param euler log2 value
+   */
+  constructor(euler: number);
   constructor(arg1: any, arg2?: any) {
     /** payload as factorisation */
     let fact: pfv;
-    if (PFV.is_valid(arg1) && !arg2) {
+    if (PFV.is_valid(arg1) && arg2 == undefined) {
       fact = arg1 as pfv;
-    } 
+    }
+    else if (valid_frac(arg1) && arg2 == undefined) {
+      /** payload as natural fraction */
+        const frac = simplify_ratio(arg1 as fraction);
+        const pos_pf = PFV.factorize_int(frac[0]);
+        const neg_pf = frac[0] != 1 ? PFV.factorize_int(frac[1]) : {};
+        for (const key in neg_pf) if (key != '1') neg_pf[key] *= -1;
+        fact = { ...pos_pf, ...neg_pf };
+    }
     else if (valid_frac([arg1, arg2])) {
-    /** payload as natural fraction */
+    /** payload as natural fraction decomposed */
       const frac = simplify_ratio([arg1, arg2] as fraction);
       const pos_pf = PFV.factorize_int(frac[0]);
       const neg_pf = frac[0] != 1 ? PFV.factorize_int(frac[1]) : {};
       for (const key in neg_pf) if (key != '1') neg_pf[key] *= -1;
       fact = { ...pos_pf, ...neg_pf };
     } 
-    else if (arg1 instanceof Ratio && !arg2) {
+    else if (arg1 instanceof Ratio && arg2 == undefined) {
     /** payload as other Ratio */
-      fact = Object.create(arg1.fact);
-    } else {
+      fact = {...arg1.fact};
+    }
+    else if (typeof arg1 === 'number' && arg2 == undefined){
+      /** payload as euler value */
+      fact = {2:arg1};
+    } 
+    else {
       throw new Error("corrupted Ratio parameters");
     }
     private_props.set(this, fact);
@@ -56,7 +74,7 @@ export default class Ratio {
 
   /** immutable factorisation vector {[prime]:power} */
   get fact() {
-    return Object.freeze(Object.create(private_props.get(this)));
+    return {...private_props.get(this)};
   }
   /** ratio numerator */
   get frac() {
