@@ -117,12 +117,11 @@ export default class RatioMap extends Array {
    */
   approximate(euler: number): pfv {
     if (typeof euler != "number") throw new Error("invalid input type");
+    if (is_int(euler)) return {2:euler};
     
     const norm_eul = Math.abs(euler) % 1;
     const octaves = Math.trunc(euler);
-    if (is_int(euler)){
-      return euler > 0 ? {2:euler} : {[-1]: 1, 2: euler};
-    }
+    
     //binary approximation search
     let start = 0,
       end = this.length - 1,
