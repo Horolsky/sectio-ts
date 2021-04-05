@@ -1,6 +1,6 @@
 import { is_int } from './math';
 import PositionalCombos from './combos'
-import { APPROX_PRIMES } from "./constants";
+import { APPROX_PRIMES, PREC } from "./constants";
 import Ratio from "./ratio";
 import {get_exact_euler} from './pfv-methods'
 
@@ -139,9 +139,9 @@ export default class RatioMap extends Array {
 
     const fact: pfv = {};
     for (const p in record.fact) fact[p] = euler > 0 && record.fact[p] != 0 ? record.fact[p] : -record.fact[p];
-    const temperament = euler - record.euler * Math.sign(euler) + octaves;
-    2 in fact ? (fact[2] += octaves+temperament) : (fact[2] = octaves+temperament) ;
-    
+    let temperament = euler - record.euler * Math.sign(euler) + octaves;
+    if (Math.abs(temperament) <= PREC) temperament = 0;
+    2 in fact ? (fact[2] += octaves+temperament) : (fact[2] = octaves+temperament);
     return fact;
   }
 }
