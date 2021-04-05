@@ -147,10 +147,14 @@ export const get_fraction = (fact: pfv): fraction => {
     den = 1;
   for (const p in fact) {
     fact[p] >= 0
-      ? (num *= parseInt(p) ** fact[p])
-      : (den *= parseInt(p) ** -fact[p]);
+      ? (num *= parseInt(p) ** Math.round(fact[p]))
+      : (den *= parseInt(p) ** -Math.round(fact[p]));
   }
   return [num, den] as fraction;
+};
+/** get euler from fraction */
+export const fraction_to_euler = (frac: fraction): number => {
+  return Math.log2(frac[0])-Math.log2(frac[1]);
 };
 /** factorisation vector validity */
 export const is_valid = (fact: pfv) => {
@@ -187,6 +191,7 @@ export default {
   get_exact_euler,
   get_rational_euler,
   get_temperament,
+  fraction_to_euler,
   is_valid,
   get_primes,
   get_exact_primes
