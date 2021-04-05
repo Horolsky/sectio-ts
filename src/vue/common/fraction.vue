@@ -7,7 +7,7 @@
 
 <script lang="ts">
 import { Options, Vue } from 'vue-class-component';
-import { frac_html, frac_latex } from './utils/frac-view';
+import { frac_html, frac_latex } from '../../utils/frac-view';
 import katex from 'katex'
 
 @Options({ 
