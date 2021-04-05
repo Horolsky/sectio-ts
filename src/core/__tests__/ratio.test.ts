@@ -9,10 +9,11 @@ test("creating Ratio inst from fraction 15:14", () => {
     expect(Math.abs(x.exact_euler - exact) < PREC).toBe(true);
 })
 
-test("Ratio addition: 3/2 + 4/3 = 2/1", () => {
-    const x = new Ratio([3,2] as fraction);
-    const y = new Ratio({2:2,3:-1} as pfv);
-    expect(Math.abs(x.add(y).exact_euler - 1) < PREC).toBe(true);
+test("Ratio addition: 3/4 * 7/5 = 21/20", () => {
+    const x = new Ratio([3,4] as fraction);
+    const y = new Ratio({5:-1,7:1} as pfv);
+    const exact = Math.log2(21)-Math.log2(20);
+    expect(Math.abs(x.add(y).exact_euler - exact) < PREC).toBe(true);
 })
 
 test("Ratio substraction: 3/2 - 4/3 = 9/8", () => {
