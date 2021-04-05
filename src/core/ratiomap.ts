@@ -115,7 +115,7 @@ export default class RatioMap extends Array {
    * @param euler 
    * @returns 
    */
-  approximate(euler: number) {
+  approximate(euler: number): pfv {
     if (typeof euler != "number") throw new Error("invalid input type");
     
     const norm_eul = Math.abs(euler) % 1;
@@ -142,6 +142,6 @@ export default class RatioMap extends Array {
     const temperament = euler - record.euler * Math.sign(euler) + octaves;
     2 in fact ? (fact[2] += octaves+temperament) : (fact[2] = octaves+temperament) ;
     
-    return new Ratio(fact);
+    return fact;
   }
 }
