@@ -1,6 +1,6 @@
 import { APPROX_PRIMES } from "./constants";
-import { valid_frac } from "./math";
-import { factorize_float, factorize_int, is_valid } from "./pfv-methods";
+import { decimal_to_fraction, valid_frac } from "./math";
+import { factorize_float, factorize_int, fraction_to_euler, is_valid } from "./pfv-methods";
 import Ratio from "./ratio";
 import RatioMap from "./ratiomap";
 
@@ -105,42 +105,45 @@ export default class Canon {
       throw Error(error_msg(error_code) + "\n" + JSON.stringify(data));
     }
     //CANON CACHE
+    const getEuler = (val: number | fraction) => {
+      return valid_frac(val)
+        ? fraction_to_euler(val)
+        : isNaN(val)
+          ? 0 
+          : val
+    }
     const size = data.sections.length;
     const period = data.params.period === null
-      ? new Ratio({ 2: 0 })
-      : new Ratio(data.params.period)
+      ? 0
+      : getEuler(data.params.period)
 
     const rm = data.params.limit ? new RatioMap(data.params.limit, data.params.range) : null;
     if (rm) private_rmaps.set(this, rm);
 
-    const getRatio = (val: number | fraction) => {
-      return valid_frac(val)
-        ? new Ratio(val)
-        : rm
-          ? new Ratio(rm.approximate(val))
-          : new Ratio(factorize_float(val ** 2, data.params.range))
-    }
+    
+
+
     /**
      * ratio to root map
      */
-    const rtr_map: { [key: number]: Ratio } = { 0: new Ratio({ 2: 0 }) };
+    const rtr_map: map_numeric = { 0: 0 }
     for (let i = 1; i < size; i++) {
       const sec = data.sections[i];
-      const r = getRatio(sec.rtp);
-      rtr_map[sec.id] = r.add(rtr_map[sec.parent]);
+      const r = getEuler(sec.rtp);
+      rtr_map[sec.id] = r + rtr_map[sec.parent];
     }
     /**
      * value = ratio of column to row
      * column stands for upward interval
      * i. e. [C][D] is maj second while [D][C] is min seventh
      */
-    const relations_mt = new Array<Array<Ratio>>(size);
+    const relations_mt = new Array<Array<number>>(size);
     for (let a = 0; a < size; a++) {
-      relations_mt[a] = new Array<Ratio>(size);
-      relations_mt[a][a] = new Ratio({ 2: 0 });
+      relations_mt[a] = new Array<number>(size);
+      relations_mt[a][a] = 0;
       for (let b = 0; b < a; b++) {
-        relations_mt[b][a] = rtr_map[a].sub(rtr_map[b]).mod(period);
-        relations_mt[a][b] = period.sub(relations_mt[b][a]);
+        relations_mt[b][a] = (rtr_map[a] - rtr_map[b]) % period;
+        relations_mt[a][b] = period - relations_mt[b][a];
       }
     }
 
@@ -165,24 +168,37 @@ export default class Canon {
 
   get data() { return private_data.get(this) }
   get cache() { return private_cache.get(this) }
+  getRatio(val: number | fraction) {
+    return valid_frac(val)
+      ? new Ratio(val)
+      : this.limit
+        ? new Ratio(this.ratiomap.approximate(val))
+        : new Ratio(factorize_float(val ** 2, this.range))
+  }
   /** print relation matrix in ratio form */
   print_relmt_r() {
-    const mt = this.cache.relations_mt as Array<Array<Ratio>>;
+    const mt = this.cache.relations_mt as Array<Array<number>>;
     return mt.map(row => row.map(r => {
-      const _r = `${r.frac[0]}:${r.frac[1]}`;
-      const L = _r.indexOf(':');
-      const R = _r.length - L - 4;
-      return new Array(6 - L).join(" ")
-        + _r
-        + new Array(6 - R).join(" ");
-    }).join("")
+      const ratio = this.getRatio(r);
+      return `${ratio.frac[0]}:${ratio.frac[1]}${
+        ratio.temperament != 0
+        ? (ratio.temperament > 0 ? '+' :'-') 
+        + decimal_to_fraction(this.comma / Math.abs(ratio.temperament), 100).join('/')
+        : ''
+      }`;
+      //const L = _r.indexOf(':');
+      //const R = _r.length - L - 1;
+      //return new Array(6 - L).join(" ")
+      //  + _r
+      //  + new Array(6 - R).join(" ");
+    }).join("\t")
     ).join("\n")
   }
   /** print relation matrix in euler form */
   print_relmt_e() {
-    const mt = this.cache.relations_mt as Array<Array<Ratio>>;
+    const mt = this.cache.relations_mt as Array<Array<number>>;
     return mt.map(row => row.map(r => {
-      const _r = `${r.exact_euler.toFixed(6)}`;
+      const _r = `${r.toFixed(6)}`;
       const L = _r.indexOf('.');
       const R = _r.length - L - 4;
       return new Array(4 - L).join(" ")
