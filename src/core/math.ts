@@ -79,7 +79,8 @@ export const decimal_to_fraction = (
   const absval = Math.abs(value);
   const floor = Math.floor(absval);
   const ceil = floor + 1;
-
+  if (absval - floor < PREC) return [floor*sign,1];
+  if (ceil - absval < PREC) return [ceil*sign,1];
   //precision met
   const round = Math.round(absval);
   if ((round > absval ? round - absval : absval - round) <= precision) {

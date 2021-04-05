@@ -1,5 +1,5 @@
 /** logarithmic calculation precision */
-export const PREC = 5e-15 //minimal: 3.552713678800501e-15
+export const PREC = 1e-13;//min for comma division: 5e-14, min 64b: 3.552713678800501e-15
 /** log2 of syntonic comma (81/80) */
 export const S_COMMA = Math.log2(81) - Math.log2(80)
 /** log2 of pythagorean comma (531441/524288) */
