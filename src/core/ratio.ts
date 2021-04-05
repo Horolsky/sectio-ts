@@ -98,7 +98,7 @@ export default class Ratio {
   }
   /** */
   get primes() {
-    return PFV.get_exact_primes(this.frac);
+    return PFV.get_exact_primes(this.fact);
   }
 
   add(other: Ratio | pfv) {
