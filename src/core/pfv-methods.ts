@@ -65,7 +65,7 @@ export const add_in_place = (
   A: pfv,
   B: pfv
 ): pfv => {
-  for (const p in B) A[p] += B[p];
+  for (const p in B) A[p] ? A[p] += B[p] : A[p] = B[p];
   return A;
 };
 /** factorisation substraction, modifies and returns first arg */
@@ -73,7 +73,7 @@ export const sub_in_place = (
   A: pfv,
   B: pfv
 ): pfv => {
-  for (const p in B) A[p] -= B[p];
+  for (const p in B) A[p] ? A[p] -= B[p] : A[p] = B[p];
   return A;
 };
 /** factorisation modulo, modifies and returns first arg */
@@ -96,13 +96,13 @@ export const scale_in_place = (
 /** factorisation vector addition */
 export const add = (A: pfv, B: pfv): pfv => {
   const f: pfv = { ...A, ...B };
-  for (const p in f) f[p] = A[p] + B[p];
+  for (const p in f) f[p] = (A[p] || 0) + (B[p] || 0);
   return f;
 };
 /** factorisation substraction */
 export const sub = (A: pfv, B: pfv): pfv => {
   const f: pfv = { ...A, ...B };
-  for (const p in f) f[p] = A[p] - B[p];
+  for (const p in f) f[p] = (A[p] || 0) - (B[p] || 0);
   return f;
 };
 /** factorisation modulo */
