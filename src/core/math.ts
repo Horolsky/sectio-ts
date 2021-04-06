@@ -1,5 +1,9 @@
 import { PREC } from "./constants";
 
+export const round_12 = (val:number) => Math.round(val * 1e12)/1e12;
+export const round_6 = (val:number) => Math.round(val * 1e6)/1e6;
+export const round_4 = (val:number) => Math.round(val * 1e4)/1e4;
+export const round_3 = (val:number) => Math.round(val * 1e3)/1e3;
 /**
  * valid fraction: tuple of integers
  * @param frac 
@@ -131,6 +135,10 @@ export const largest_prime = (val: number) => {
 };
 
 export default {
+  round_12,
+  round_6,
+  round_4,
+  round_3,
   is_int,
   gcf,
   simplify_ratio,
