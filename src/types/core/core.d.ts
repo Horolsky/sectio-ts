@@ -50,8 +50,15 @@ type section = {
   /** id of parent section */
   parent: number,
   /** ratio to parent section */
-  rtp: number | number[]
+  rtp: number | number[],
+  /** ratio to root section, internal cache */
+  rtr?: number | Ratio
+  /** children sections, internal cache */
+  children?: number[]
 }
+/** gives access to section array by id */
+type section_index = { [key: number]: section }
+
 type section_cache = {
   [id: number]: {
     /** section's full name */
