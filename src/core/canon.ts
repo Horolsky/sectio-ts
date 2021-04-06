@@ -1,8 +1,17 @@
+import { put_to_sorted } from "@/utils/object";
 import { APPROX_PRIMES } from "./constants";
-import { decimal_to_fraction, valid_frac } from "./math";
+import { decimal_to_fraction, round_12, valid_frac } from "./math";
 import { factorize_float, factorize_int, fraction_to_euler, is_valid } from "./pfv-methods";
 import Ratio from "./ratio";
 import RatioMap from "./ratiomap";
+
+const getEuler = (val: number | fraction) => {
+  return valid_frac(val)
+    ? fraction_to_euler(val)
+    : isNaN(val)
+      ? 0 
+      : val
+}
 
 export const DEFAULT_SCHEMA: canon_schema = {
   id: 0,
@@ -80,8 +89,8 @@ const error_msg = (code: number) => {
   return msg;
 }
 
-
 const private_data = new WeakMap();
+const private_rtr_cache = new WeakMap();
 const private_cache = new WeakMap();
 const private_rmaps = new WeakMap();
 export default class Canon {
@@ -105,13 +114,6 @@ export default class Canon {
       throw Error(error_msg(error_code) + "\n" + JSON.stringify(data));
     }
     //CANON CACHE
-    const getEuler = (val: number | fraction) => {
-      return valid_frac(val)
-        ? fraction_to_euler(val)
-        : isNaN(val)
-          ? 0 
-          : val
-    }
     const size = data.sections.length;
     const period = data.params.period === null
       ? 0
@@ -120,36 +122,49 @@ export default class Canon {
     const rm = data.params.limit ? new RatioMap(data.params.limit, data.params.range) : null;
     if (rm) private_rmaps.set(this, rm);
 
+    //SECTIONS CACHE
+    const sections = data.sections;
     
-
-
-    /**
-     * ratio to root map
-     */
-    const rtr_map: map_numeric = { 0: 0 }
+    /** id index to sections array */
+    const s_index: section_index = {0: sections[0]};
+    s_index[0].rtr = 0;//root ratio to itself
+    
     for (let i = 1; i < size; i++) {
-      const sec = data.sections[i];
-      const r = getEuler(sec.rtp);
-      rtr_map[sec.id] = r + rtr_map[sec.parent];
+      const sec = sections[i];
+      s_index[sec.id] = sections[i];
+      s_index[sec.id].rtr = getEuler(sec.rtp) + s_index[sec.parent].rtr;
+      s_index[sec.parent].children 
+        ? s_index[sec.parent].children?.push(sec.id)
+        : s_index[sec.parent].children = [sec.id]; 
     }
-    /**
-     * value = ratio of column to row
-     * column stands for upward interval
-     * i. e. [C][D] is maj second while [D][C] is min seventh
-     */
-    const relations_mt = new Array<Array<number>>(size);
+    private_data.set(this, { ...data, s_index });
+
+    const relations = new Array<Array<number>>(size); 
+    const intervals = {0: []} as intrv_incendence; 
+    
     for (let a = 0; a < size; a++) {
-      relations_mt[a] = new Array<number>(size);
-      relations_mt[a][a] = 0;
+      relations[a] = new Array<number>(size);
+      relations[a][a] = 0;
+      intervals[0].push([sections[a].id,sections[a].id]);
       for (let b = 0; b < a; b++) {
-        relations_mt[b][a] = (rtr_map[a] - rtr_map[b]) % period;
-        relations_mt[a][b] = period - relations_mt[b][a];
+        const recto = round_12((sections[a].rtr - sections[b].rtr) % period);
+        const inverso = round_12(period - recto);
+        relations[b][a] = recto;
+        relations[a][b] = inverso;
+        if(intervals[recto] == undefined) {
+          intervals[recto] = new Array<number[]>();
+          intervals[inverso] = new Array<number[]>();
+        }
+        intervals[recto].push([sections[b].id,sections[a].id]);
+        intervals[inverso].push([sections[a].id,sections[b].id]);
       }
     }
+    private_cache.set(this, { 
+      relations,
+      intervals
+    });
 
-    private_data.set(this, data);
-    private_cache.set(this, { rtr_map, relations_mt });
-
+    //update_cache(this, { root: 0, rtp: 0, parent: NaN });
   }
   get id() { return private_data.get(this).id }
   get code() { return private_data.get(this).code }
@@ -168,6 +183,42 @@ export default class Canon {
 
   get data() { return private_data.get(this) }
   get cache() { return private_cache.get(this) }
+  update_tree (
+      /** root id of section subtree */
+      root: number,
+      /** new root ratio to parent */
+      rtp?: number,
+      /** new root parent */
+      parent?: number
+    ) {
+      const data = private_data.get(this);
+      const sections = data.sections as Array<section>;
+      const index = data.s_index as section_index;
+      const size = sections.length;
+  
+      /** all sections from an edited subtree */
+      const subset = new Array<number>();
+      const queue = new Array<number>();
+      queue.push(root);
+      while (queue.length > 0){
+        const s_id = queue.shift() as number;
+        put_to_sorted(subset, s_id);
+        index[s_id].children?.forEach(child => queue.push(child));
+      }
+      //subset duplicates test
+      //possibly unnecessary
+      if (subset.length > 1){
+        for (let i = 1; i < subset.length; i++){
+          if (subset[i] == subset[i-1]) throw Error("corrupted sections hierarchy");
+        }
+      }
+      const cache = private_cache.get(this);
+      const relations = cache.relations as Array<Array<number>>;
+      const intervals = cache.intervals as intrv_incendence;
+      
+      //do update
+  }
+
   getRatio(val: number | fraction) {
     return valid_frac(val)
       ? new Ratio(val)
@@ -177,26 +228,24 @@ export default class Canon {
   }
   /** print relation matrix in ratio form */
   print_relmt_r() {
-    const mt = this.cache.relations_mt as Array<Array<number>>;
+    const mt = this.cache.relations as Array<Array<number>>;
     return mt.map(row => row.map(r => {
       const ratio = this.getRatio(r);
-      return `${ratio.frac[0]}:${ratio.frac[1]}${
+      let cell = `${ratio.frac[0]}:${ratio.frac[1]}${
         ratio.temperament != 0
         ? (ratio.temperament > 0 ? '+' :'-') 
         + decimal_to_fraction(this.comma / Math.abs(ratio.temperament), 100).join('/')
         : ''
       }`;
-      //const L = _r.indexOf(':');
-      //const R = _r.length - L - 1;
-      //return new Array(6 - L).join(" ")
-      //  + _r
-      //  + new Array(6 - R).join(" ");
-    }).join("\t")
+      cell = new Array(6-cell.indexOf(':')).join(" ")+cell;
+      cell += new Array(12-cell.length).join(" ");
+      return cell;
+    }).join("\t\t")
     ).join("\n")
   }
   /** print relation matrix in euler form */
   print_relmt_e() {
-    const mt = this.cache.relations_mt as Array<Array<number>>;
+    const mt = this.cache.relations as Array<Array<number>>;
     return mt.map(row => row.map(r => {
       const _r = `${r.toFixed(6)}`;
       const L = _r.indexOf('.');
