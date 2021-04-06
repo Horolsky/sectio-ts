@@ -1,5 +1,7 @@
 /** logarithmic calculation precision */
-export const PREC = 1e-13;//min for comma division: 5e-14, min 64b: 3.552713678800501e-15
+export const PREC = 6e-13;
+//tested on difference of exact log2 values with toFixed(12)
+//min for comma division: 5e-14, min 64-bit: 3.552713678800501e-15
 /** log2 of syntonic comma (81/80) */
 export const S_COMMA = Math.log2(81) - Math.log2(80)
 /** log2 of pythagorean comma (531441/524288) */
