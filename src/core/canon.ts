@@ -183,40 +183,99 @@ export default class Canon {
 
   get data() { return private_data.get(this) }
   get cache() { return private_cache.get(this) }
-  update_tree (
-      /** root id of section subtree */
-      root: number,
-      /** new root ratio to parent */
+  get s_index() { return private_data.get(this)?.s_index as section_index }
+  get_subtree = (root: number) => {
+    /** all sections from an edited subtree */
+    const subset = new Array<number>();
+    const queue = new Array<number>();
+    queue.push(root);
+    while (queue.length > 0){
+      const s_id = queue.shift() as number;
+      put_to_sorted(subset, s_id);
+      this.s_index[s_id].children?.forEach(child => queue.push(child));
+    }
+    //subset duplicates test
+    //possibly unnecessary
+    if (subset.length > 1){
+      for (let i = 1; i < subset.length; i++){
+        if (subset[i] == subset[i-1]) throw Error("corrupted sections hierarchy");
+      }
+    }
+    return subset;
+  }
+  /**
+   * update section relations cache\
+   * if one of rtp or parent args undefined, it would be taken from current data\
+   * if sec not exist, new one will be created with given parameters (default parent is root)\
+   * if parent is set to null (not undefined), section subtree will be deleted if exist\
+   * 
+   * @param sec id of section
+   * @param rtp ratio to parent
+   * @param parent parent id
+   * @returns true on success, false if parameters are incorrect
+   */
+  update_relations (
+      sec: number,
       rtp?: number,
-      /** new root parent */
-      parent?: number
-    ) {
+      parent?: number | null
+    ): boolean {
+      
       const data = private_data.get(this);
       const sections = data.sections as Array<section>;
       const index = data.s_index as section_index;
       const size = sections.length;
-  
-      /** all sections from an edited subtree */
-      const subset = new Array<number>();
-      const queue = new Array<number>();
-      queue.push(root);
-      while (queue.length > 0){
-        const s_id = queue.shift() as number;
-        put_to_sorted(subset, s_id);
-        index[s_id].children?.forEach(child => queue.push(child));
-      }
-      //subset duplicates test
-      //possibly unnecessary
-      if (subset.length > 1){
-        for (let i = 1; i < subset.length; i++){
-          if (subset[i] == subset[i-1]) throw Error("corrupted sections hierarchy");
-        }
-      }
       const cache = private_cache.get(this);
       const relations = cache.relations as Array<Array<number>>;
       const intervals = cache.intervals as intrv_incendence;
-      
-      //do update
+      const sec_i = sections.findIndex(s => s.id == sec);
+
+      //delete section 
+      if (sec_i >= 0 && parent === null){
+        const subtree = this.get_subtree(sec);
+        for (let i = subtree.length-1; i >= 0; i--){
+          const del_id = subtree[i];
+          const del_i = sections.findIndex(s=>s.id == del_id);
+          //sections and index
+          sections.splice(del_i, 1);
+          delete index[subtree[i]];
+          //interval map cleaning
+          relations[del_i].forEach(int => {
+            for (let p = intervals[int]?.length-1; p >= 0; p--){
+              const pair = intervals[int][p];
+              if (pair.indexOf(del_id) >= 0) intervals[int].splice(p, 1);
+            }
+            if (intervals[int]?.length == 0) delete intervals[int];
+          })
+          //row deletion
+          relations.splice(del_i, 1);
+          //column deletion + inversion intervals
+          for (let c = 0; c < relations.length; c++){
+            const inv = relations[c].splice(del_i, 1)[0];
+            
+            for (let p = intervals[inv]?.length-1; p >= 0; p--){
+              const pair = intervals[inv][p];
+              if (pair.indexOf(del_id) >= 0) intervals[inv].splice(p, 1);
+            }
+            if (intervals[inv]?.length == 0) delete intervals[inv];
+          }
+        }
+      }
+      //add new section
+      else if (sec_i < 0 && rtp != undefined) {
+        parent = parent ?? 0;
+        //TODO
+      }
+      //edit existing subtree
+      else if (sec_i >= 0 && (rtp != undefined || parent != undefined)) {
+        parent = parent ?? 0;
+        rtp = rtp ?? getEuler(index[sec].rtp);
+        const subtree = this.get_subtree(sec);
+        //TODO
+      }      
+      else {
+        return false;
+      }
+      return true;   
   }
 
   getRatio(val: number | fraction) {
