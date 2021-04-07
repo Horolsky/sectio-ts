@@ -21,7 +21,7 @@ test('creating Canon from db doc', async ()=>{
     if (doc.exists) {
         const c = new Canon(doc.data());
         expect(c.limit).toBe(5);
-        c.update_relations(6, 0, null);
+        c.delete_section(6);
         expect(c.data.sections.length).toBe(6);
     }
     expect(doc.exists).toBe(true);
