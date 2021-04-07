@@ -1,4 +1,4 @@
-import { put_to_sorted } from "@/utils/object";
+import { put_to_sorted } from "../utils/object";
 import { APPROX_PRIMES } from "./constants";
 import { decimal_to_fraction, round_12, valid_frac } from "./math";
 import { factorize_float, factorize_int, fraction_to_euler, is_valid } from "./pfv-methods";
@@ -124,6 +124,15 @@ export default class Canon {
 
     //SECTIONS CACHE
     const sections = data.sections;
+    if (size == 0) {
+      sections[0] = {
+        id: 0,
+        code: "Г",
+        name: "Г",
+        parent: NaN,
+        rtp: 0
+      } as section;
+    }
     
     /** id index to sections array */
     const s_index: section_index = {0: sections[0]};
@@ -192,7 +201,7 @@ export default class Canon {
     while (queue.length > 0){
       const s_id = queue.shift() as number;
       put_to_sorted(subset, s_id);
-      this.s_index[s_id].children?.forEach(child => queue.push(child));
+        this.s_index[s_id].children?.forEach(child => queue.push(child));
     }
     //subset duplicates test
     //possibly unnecessary
@@ -263,7 +272,7 @@ export default class Canon {
       //add new section
       else if (sec_i < 0 && rtp != undefined) {
         parent = parent ?? 0;
-        //TODO
+        
       }
       //edit existing subtree
       else if (sec_i >= 0 && (rtp != undefined || parent != undefined)) {
