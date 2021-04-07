@@ -148,7 +148,7 @@ export default class Canon {
       for (let i = id_pool.length-1; i>=0; i--){
         const child = id_pool[i];
         if (s_index[child].parent == id){
-          s_index[child].rtr = (s_index[id].rtr + getEuler(s_index[child].rtp)) % (period || Infinity);
+          s_index[child].rtr = ((s_index[id].rtr as number) + getEuler(s_index[child].rtp)) % (period || Infinity);
           (s_index[id].children as number[]).push(child);
           queue.push(id_pool.splice(i, 1)[0]);
         }
@@ -179,7 +179,7 @@ export default class Canon {
 
       intervals[0].pairs.push([sections[a].id, sections[a].id]);
       for (let b = 0; b < a; b++) {
-        let recto = round_12((sections[a].rtr - sections[b].rtr) % (period || Infinity));
+        let recto = round_12(((sections[a].rtr as number) - (sections[b].rtr as number)) % (period || Infinity));
         if (recto < 0) recto = round_12(period + recto);
         const inverso = round_12(period - recto);
         
@@ -225,6 +225,7 @@ export default class Canon {
   get data() { return private_data.get(this) }
   get cache() { return private_cache.get(this) }
   get s_index() { return private_data.get(this)?.s_index as section_index }
+  get size() {return private_data.get(this).sections.length }
   get_subtree(root: number) {
     /** all sections from an edited subtree */
     const subset = new Array<number>();
@@ -291,7 +292,7 @@ export default class Canon {
         : code
       : code
 
-    const rtr = (index[parent].rtr + rtp) % (period || Infinity);
+    const rtr = ((index[parent].rtr as number) + rtp) % (period || Infinity);
     sections.splice(new_i, 0, {
       id: new_id,
       code,
@@ -307,7 +308,7 @@ export default class Canon {
     //CACHE UPD
     relations.splice(new_i, 0, new Array<interval>(size));
     for (let a = 0; a < size + 1; a++) {
-      let recto = round_12(rtr - sections[a].rtr);
+      let recto = round_12(rtr - (sections[a].rtr as number));
       if (recto < 0) recto = round_12(period + recto);
       const inverso = round_12(period - recto);
       
@@ -376,12 +377,12 @@ export default class Canon {
       (index[parent].children as number[]).push(id);
       index[id].parent = parent;
       index[id].rtp = rtp;
-      const rtr = (index[parent].rtr + rtp) % (period || Infinity);
+      const rtr = ((index[parent].rtr as number) + rtp) % (period || Infinity);
       index[id].rtr = rtr;
 
       //CACHE UPD
       for (let a = 0; a < sections.length; a++) {
-        let recto = round_12(rtr - sections[a].rtr);
+        let recto = round_12(rtr - (sections[a].rtr as number));
         if (recto < 0) recto = round_12(period + recto);
         const inverso = round_12(period - recto);
         
@@ -471,6 +472,34 @@ export default class Canon {
       intervals
     });
     return 0;
+  }
+  update_params({ period, comma, range, limit }:{
+    period?: number | fraction,
+    comma?: number | fraction,
+    range?: number,
+    limit?: plimit | null 
+  }) {
+    
+    const params = private_data.get(this).params as canon_params;
+    //period = getEuler(period) ?? this.period;
+    if (comma != undefined && typeof comma == "number" && comma > 0){
+      params.comma = getEuler(comma);
+    }
+    if (period != undefined && this.size === 1){
+      params.period = period;
+    }
+    if (range != undefined && limit != undefined){
+      params.range = range ?? params.range; 
+      params.limit = limit ?? params.limit;
+
+      const rm = params.limit ? new RatioMap(params.limit, params.range) : null;
+      private_rmaps.set(this, rm);
+      
+      const intervals = private_cache.get(this).intervals as intrv_dict;
+      for (const i in intervals){
+        intervals[i].ratio = this.rationalize(intervals[i].euler);
+      }
+    }
   }
   private rationalize(val: number | fraction) {
     return valid_frac(val)

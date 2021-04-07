@@ -35,7 +35,7 @@ type canon_params = {
   /** range of the system's rational approximation */
   range: number,
   /** periodic interval of the system */
-  period: null | number | number[],
+  period: null | number | fraction,
   /** temperament representation interval */
   comma: number
 }
@@ -49,9 +49,9 @@ type section = {
   /** id of parent section */
   parent: number,
   /** ratio to parent section */
-  rtp: number | number[],
+  rtp: number | fraction,
   /** ratio to root section, internal cache */
-  rtr?: number | Ratio
+  rtr?: number,
   /** children sections, internal cache */
   children?: number[]
 }
