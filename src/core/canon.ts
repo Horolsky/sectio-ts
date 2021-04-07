@@ -5,11 +5,11 @@ import { factorize_float, factorize_int, fraction_to_euler, is_valid } from "./p
 import Ratio from "./ratio";
 import RatioMap from "./ratiomap";
 
-const getEuler = (val: number | fraction) => {
+const getEuler = (val: number | fraction): number => {
   return valid_frac(val)
     ? fraction_to_euler(val)
     : isNaN(val)
-      ? 0 
+      ? 0
       : val
 }
 
@@ -30,7 +30,6 @@ export const DEFAULT_SCHEMA: canon_schema = {
   },
   sections: [],
 };
-
 
 /**
  * operates on sorted input
@@ -90,9 +89,9 @@ const error_msg = (code: number) => {
 }
 
 const private_data = new WeakMap();
-const private_rtr_cache = new WeakMap();
 const private_cache = new WeakMap();
 const private_rmaps = new WeakMap();
+
 export default class Canon {
 
   constructor(schema?: any) {
@@ -133,42 +132,42 @@ export default class Canon {
         rtp: 0
       } as section;
     }
-    
+
     /** id index to sections array */
-    const s_index: section_index = {0: sections[0]};
+    const s_index: section_index = { 0: sections[0] };
     s_index[0].rtr = 0;//root ratio to itself
-    
+    s_index[0].children = [];
     for (let i = 1; i < size; i++) {
       const sec = sections[i];
+      sec.children = [];
       s_index[sec.id] = sections[i];
-      s_index[sec.id].rtr = getEuler(sec.rtp) + s_index[sec.parent].rtr;
-      s_index[sec.parent].children 
-        ? s_index[sec.parent].children?.push(sec.id)
-        : s_index[sec.parent].children = [sec.id]; 
+      s_index[sec.id].rtr = (getEuler(sec.rtp) + s_index[sec.parent].rtr) % (period || Infinity);
+      (s_index[sec.parent].children as number[]).push(sec.id);
     }
     private_data.set(this, { ...data, s_index });
 
-    const relations = new Array<Array<number>>(size); 
-    const intervals = {0: []} as intrv_incendence; 
-    
+    const relations = new Array<Array<number>>(size);
+    const intervals = { 0: [] } as intrv_incendence;
+
     for (let a = 0; a < size; a++) {
       relations[a] = new Array<number>(size);
       relations[a][a] = 0;
-      intervals[0].push([sections[a].id,sections[a].id]);
+      intervals[0].push([sections[a].id, sections[a].id]);
       for (let b = 0; b < a; b++) {
-        const recto = round_12((sections[a].rtr - sections[b].rtr) % period);
+        let recto = round_12((sections[a].rtr - sections[b].rtr) % (period || Infinity));
+        if (recto < 0) recto = round_12(period + recto);  
         const inverso = round_12(period - recto);
         relations[b][a] = recto;
         relations[a][b] = inverso;
-        if(intervals[recto] == undefined) {
+        if (intervals[recto] == undefined) {
           intervals[recto] = new Array<number[]>();
           intervals[inverso] = new Array<number[]>();
         }
-        intervals[recto].push([sections[b].id,sections[a].id]);
-        intervals[inverso].push([sections[a].id,sections[b].id]);
+        intervals[recto].push([sections[b].id, sections[a].id]);
+        intervals[inverso].push([sections[a].id, sections[b].id]);
       }
     }
-    private_cache.set(this, { 
+    private_cache.set(this, {
       relations,
       intervals
     });
@@ -193,100 +192,181 @@ export default class Canon {
   get data() { return private_data.get(this) }
   get cache() { return private_cache.get(this) }
   get s_index() { return private_data.get(this)?.s_index as section_index }
-  get_subtree = (root: number) => {
+  get_subtree(root: number) {
     /** all sections from an edited subtree */
     const subset = new Array<number>();
     const queue = new Array<number>();
     queue.push(root);
-    while (queue.length > 0){
+    while (queue.length > 0) {
       const s_id = queue.shift() as number;
       put_to_sorted(subset, s_id);
-        this.s_index[s_id].children?.forEach(child => queue.push(child));
+      (this.s_index[s_id].children as number[]).forEach(child => queue.push(child));
     }
     //subset duplicates test
     //possibly unnecessary
-    if (subset.length > 1){
-      for (let i = 1; i < subset.length; i++){
-        if (subset[i] == subset[i-1]) throw Error("corrupted sections hierarchy");
+    if (subset.length > 1) {
+      for (let i = 1; i < subset.length; i++) {
+        if (subset[i] == subset[i - 1]) throw Error("corrupted sections hierarchy");
       }
     }
     return subset;
   }
-  /**
-   * update section relations cache\
-   * if one of rtp or parent args undefined, it would be taken from current data\
-   * if sec not exist, new one will be created with given parameters (default parent is root)\
-   * if parent is set to null (not undefined), section subtree will be deleted if exist\
-   * 
-   * @param sec id of section
-   * @param rtp ratio to parent
-   * @param parent parent id
-   * @returns true on success, false if parameters are incorrect
-   */
-  update_relations (
-      sec: number,
-      rtp?: number,
-      parent?: number | null
-    ): boolean {
-      
-      const data = private_data.get(this);
-      const sections = data.sections as Array<section>;
-      const index = data.s_index as section_index;
-      const size = sections.length;
-      const cache = private_cache.get(this);
-      const relations = cache.relations as Array<Array<number>>;
-      const intervals = cache.intervals as intrv_incendence;
-      const sec_i = sections.findIndex(s => s.id == sec);
+  add_section({ name, code, parent = 0, rtp }: {
+    name?: string,
+    code?: string,
+    parent?: number,
+    rtp: number
+  }) {
+    //add new section
+    if (rtp === undefined) return -1
 
-      //delete section 
-      if (sec_i >= 0 && parent === null){
-        const subtree = this.get_subtree(sec);
-        for (let i = subtree.length-1; i >= 0; i--){
-          const del_id = subtree[i];
-          const del_i = sections.findIndex(s=>s.id == del_id);
-          //sections and index
-          sections.splice(del_i, 1);
-          delete index[subtree[i]];
-          //interval map cleaning
-          relations[del_i].forEach(int => {
-            for (let p = intervals[int]?.length-1; p >= 0; p--){
-              const pair = intervals[int][p];
-              if (pair.indexOf(del_id) >= 0) intervals[int].splice(p, 1);
-            }
-            if (intervals[int]?.length == 0) delete intervals[int];
-          })
-          //row deletion
-          relations.splice(del_i, 1);
-          //column deletion + inversion intervals
-          for (let c = 0; c < relations.length; c++){
-            const inv = relations[c].splice(del_i, 1)[0];
-            
-            for (let p = intervals[inv]?.length-1; p >= 0; p--){
-              const pair = intervals[inv][p];
-              if (pair.indexOf(del_id) >= 0) intervals[inv].splice(p, 1);
-            }
-            if (intervals[inv]?.length == 0) delete intervals[inv];
-          }
+    const data = private_data.get(this);
+    const period = data.params.period === null
+      ? 0
+      : getEuler(data.params.period);
+    const sections = data.sections as Array<section>;
+    const index = data.s_index as section_index;
+    const size = sections.length;
+    const cache = private_cache.get(this);
+    const relations = cache.relations as Array<Array<number>>;
+    const intervals = cache.intervals as intrv_incendence;
+
+    const parent_i = sections.findIndex(s => s.id == parent);
+    if (parent_i < 0) throw Error("invalid parent id");
+    const [new_id, new_i] = (() => {
+      let id = sections[size - 1].id + 1;
+      let i = parent_i;
+      for (i; i < size - 1; i++) {
+        if (sections[i + 1].id - sections[i].id > 1) {
+          id = sections[i].id + 1;
+          break;
         }
       }
-      //add new section
-      else if (sec_i < 0 && rtp != undefined) {
-        parent = parent ?? 0;
-        
-      }
-      //edit existing subtree
-      else if (sec_i >= 0 && (rtp != undefined || parent != undefined)) {
-        parent = parent ?? 0;
-        rtp = rtp ?? getEuler(index[sec].rtp);
-        const subtree = this.get_subtree(sec);
-        //TODO
-      }      
-      else {
-        return false;
-      }
-      return true;   
-  }
+      return [id, i + 1];
+    })();
+    if (sections.findIndex(s => s.id == new_id) >= 0) throw Error("sections order corrupted");
+    //NEW SECTION PARAMS
+    code = code 
+    ? sections.findIndex(s=>s.code == code) < 0
+      ? code
+      : `${new_id}`
+    : `${new_id}`
 
+    name = name 
+    ? sections.findIndex(s=>s.name == name) < 0
+      ? name
+      : code
+    : code
+
+    const rtr = (index[parent].rtr + rtp) % (period || Infinity);
+    sections.splice(new_i, 0, {
+      id: new_id,
+      code,
+      name,
+      rtp,
+      parent,
+      rtr,
+      children: []
+    } as section);
+
+    //INDEX REG
+    index[new_id] = sections[new_i];
+    //CACHE UPD
+    relations.splice(new_i, 0, new Array<number>(size));
+    for (let a = 0; a < size + 1; a++) {
+      let recto = a < new_i
+        ? round_12(rtr - sections[a].rtr)
+        : round_12(sections[a].rtr - rtr);
+      if (recto < 0) recto = round_12(period + recto);
+      const inverso = round_12(period - recto);
+      relations[a].splice(new_i, 0, recto);
+      relations[new_i][a] = inverso;
+
+      intervals[recto]
+        ? intervals[recto].push([sections[a].id, new_id])
+        : intervals[recto] = [[sections[a].id, new_id]];
+      intervals[inverso]
+        ? intervals[inverso].push([new_id, sections[a].id])
+        : intervals[inverso] = [[new_id, sections[a].id]];
+    }
+    relations[new_i][new_i] = 0;
+    return new_id;
+  }
+  edit_section({ id, name, code, parent, rtp }: {
+    id: number
+    name?: string,
+    code?: string,
+    parent?: number,
+    rtp?: number
+  }) {
+    const data = private_data.get(this);
+    const sections = data.sections as Array<section>;
+    const index = data.s_index as section_index;
+    const cache = private_cache.get(this);
+    const relations = cache.relations as Array<Array<number>>;
+    const intervals = cache.intervals as intrv_incendence;
+    const sec_i = sections.findIndex(s => s.id == id);
+    if (sec_i < 0) return false;
+    if (sec_i >= 0 && (rtp != undefined || parent != undefined)) 
+      parent = parent ?? 0;
+      rtp = rtp ?? getEuler(index[id].rtp);
+      const subtree = this.get_subtree(id);
+      //TODO
+      return id;
+  }
+  delete_section(id: number) {
+    const data = private_data.get(this);
+    const sections = data.sections as Array<section>;
+    const index = data.s_index as section_index;
+    const cache = private_cache.get(this);
+    const relations = cache.relations as Array<Array<number>>;
+    const intervals = cache.intervals as intrv_incendence;
+    const sec_i = sections.findIndex(s => s.id == id);
+    if (sec_i < 0) return false; 
+
+    const subtree = this.get_subtree(id);
+    for (let i = subtree.length - 1; i >= 0; i--) {
+        const del_id = subtree[i];
+        const del_i = sections.findIndex(s => s.id == del_id);
+        //sections and index
+        sections.splice(del_i, 1);
+        delete index[subtree[i]];
+        //interval map cleaning
+        relations[del_i].forEach(int => {
+          for (let p = intervals[int].length - 1; p >= 0; p--) {
+            const pair = intervals[int][p];
+            if (pair.indexOf(del_id) >= 0) intervals[int].splice(p, 1);
+          }
+          if (intervals[int].length == 0) delete intervals[int];
+        })
+        //row deletion
+        relations.splice(del_i, 1);
+        //column deletion + inversion intervals
+        for (let c = 0; c < relations.length; c++) {
+          const inv = relations[c].splice(del_i, 1)[0];
+          for (let p = intervals[inv].length - 1; p >= 0; p--) {
+            const pair = intervals[inv][p];
+            if (pair.indexOf(del_id) >= 0) intervals[inv].splice(p, 1);
+          }
+          if (intervals[inv].length == 0) delete intervals[inv];
+        }
+    }
+    return true;
+  }
+  drop_sections() {
+    const data = private_data.get(this);
+    const sections = data.sections as Array<section>;
+    const index = data.s_index as section_index;
+    const size = sections.length;
+    sections.forEach(s => delete index[s.id]);
+    sections.splice(1, size - 1);
+    index[0] = sections[0];
+    private_cache.set(this, {
+      relations: [[0]],
+      intervals: { 0: [[0, 0]] }
+    });
+    return 0;
+  }
   getRatio(val: number | fraction) {
     return valid_frac(val)
       ? new Ratio(val)
@@ -299,14 +379,13 @@ export default class Canon {
     const mt = this.cache.relations as Array<Array<number>>;
     return mt.map(row => row.map(r => {
       const ratio = this.getRatio(r);
-      let cell = `${ratio.frac[0]}:${ratio.frac[1]}${
-        ratio.temperament != 0
-        ? (ratio.temperament > 0 ? '+' :'-') 
-        + decimal_to_fraction(this.comma / Math.abs(ratio.temperament), 100).join('/')
-        : ''
-      }`;
-      cell = new Array(6-cell.indexOf(':')).join(" ")+cell;
-      cell += new Array(12-cell.length).join(" ");
+      let cell = `${ratio.frac[0]}:${ratio.frac[1]}${ratio.temperament != 0
+          ? (ratio.temperament > 0 ? '+' : '-')
+          + decimal_to_fraction(this.comma / Math.abs(ratio.temperament), 100).join('/')
+          : ''
+        }`;
+      cell = new Array(6 - cell.indexOf(':')).join(" ") + cell;
+      cell += new Array(12 - cell.length).join(" ");
       return cell;
     }).join("\t\t")
     ).join("\n")
