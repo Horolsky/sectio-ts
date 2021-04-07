@@ -155,7 +155,7 @@ export default class Canon {
       intervals[0].push([sections[a].id, sections[a].id]);
       for (let b = 0; b < a; b++) {
         let recto = round_12((sections[a].rtr - sections[b].rtr) % (period || Infinity));
-        if (recto < 0) recto = round_12(period + recto);  
+        if (recto < 0) recto = round_12(period + recto);
         const inverso = round_12(period - recto);
         relations[b][a] = recto;
         relations[a][b] = inverso;
@@ -246,17 +246,17 @@ export default class Canon {
     })();
     if (sections.findIndex(s => s.id == new_id) >= 0) throw Error("sections order corrupted");
     //NEW SECTION PARAMS
-    code = code 
-    ? sections.findIndex(s=>s.code == code) < 0
-      ? code
+    code = code
+      ? sections.findIndex(s => s.code == code) < 0
+        ? code
+        : `${new_id}`
       : `${new_id}`
-    : `${new_id}`
 
-    name = name 
-    ? sections.findIndex(s=>s.name == name) < 0
-      ? name
+    name = name
+      ? sections.findIndex(s => s.name == name) < 0
+        ? name
+        : code
       : code
-    : code
 
     const rtr = (index[parent].rtr + rtp) % (period || Infinity);
     sections.splice(new_i, 0, {
@@ -307,12 +307,64 @@ export default class Canon {
     const intervals = cache.intervals as intrv_incendence;
     const sec_i = sections.findIndex(s => s.id == id);
     if (sec_i < 0) return false;
-    if (sec_i >= 0 && (rtp != undefined || parent != undefined)) 
-      parent = parent ?? 0;
-      rtp = rtp ?? getEuler(index[id].rtp);
+    if (
+      rtp === undefined &&
+      parent === undefined &&
+      name === undefined &&
+      code === undefined
+    ) return true;
+    if (code != undefined || sections.findIndex(s => s.code == code) < 0) {
+      index[id].code = code as string;
+    }
+    if (name != undefined || sections.findIndex(s => s.name == name) < 0) {
+      index[id].name = name as string;
+    }
+    //relations update
+    parent = parent ?? index[id].parent;
+    rtp = rtp ?? getEuler(index[id].rtp);
+    if (rtp != index[id].rtp || parent != index[id].parent) {
       const subtree = this.get_subtree(id);
-      //TODO
-      return id;
+      if (subtree.indexOf(parent) >= 0) return false;
+      const period = data.params.period === null
+      ? 0
+      : getEuler(data.params.period);
+      const size = sections.length;
+      //REG UPD
+      const old_parent = index[id].parent;
+      const op_children = (index[old_parent].children as number[]);
+      op_children.splice(op_children.indexOf(id), 1);
+      (index[parent].children as number[]).push(id);
+      index[id].parent = parent;
+      index[id].rtp = rtp;
+      const rtr = (index[parent].rtr + rtp) % (period || Infinity);
+      index[id].rtr = rtr;
+
+      //CACHE UPD
+      for (let a = 0; a < sections.length; a++) {
+        let recto = a < sec_i
+          ? round_12(rtr - sections[a].rtr)
+          : round_12(sections[a].rtr - rtr);
+        if (recto < 0) recto = round_12(period + recto);
+        const inverso = round_12(period - recto);
+        
+        const old_recto = relations[a][sec_i];
+        const old_inverso = relations[sec_i][a]; 
+        relations[a][sec_i] = recto;
+        relations[sec_i][a] = inverso;
+  
+        intervals[old_recto].splice(intervals[old_recto].findIndex(pair=>pair.indexOf(id)>=0));
+        intervals[old_inverso].splice(intervals[old_inverso].findIndex(pair=>pair.indexOf(id)>=0));
+        
+        intervals[recto]
+          ? intervals[recto].push([sections[a].id, id])
+          : intervals[recto] = [[sections[a].id, id]];
+        intervals[inverso]
+          ? intervals[inverso].push([id, sections[a].id])
+          : intervals[inverso] = [[id, sections[a].id]];
+      }
+      relations[sec_i][sec_i] = 0;
+    }
+    return true;
   }
   delete_section(id: number) {
     const data = private_data.get(this);
@@ -322,34 +374,34 @@ export default class Canon {
     const relations = cache.relations as Array<Array<number>>;
     const intervals = cache.intervals as intrv_incendence;
     const sec_i = sections.findIndex(s => s.id == id);
-    if (sec_i < 0) return false; 
+    if (sec_i < 0) return false;
 
     const subtree = this.get_subtree(id);
     for (let i = subtree.length - 1; i >= 0; i--) {
-        const del_id = subtree[i];
-        const del_i = sections.findIndex(s => s.id == del_id);
-        //sections and index
-        sections.splice(del_i, 1);
-        delete index[subtree[i]];
-        //interval map cleaning
-        relations[del_i].forEach(int => {
-          for (let p = intervals[int].length - 1; p >= 0; p--) {
-            const pair = intervals[int][p];
-            if (pair.indexOf(del_id) >= 0) intervals[int].splice(p, 1);
-          }
-          if (intervals[int].length == 0) delete intervals[int];
-        })
-        //row deletion
-        relations.splice(del_i, 1);
-        //column deletion + inversion intervals
-        for (let c = 0; c < relations.length; c++) {
-          const inv = relations[c].splice(del_i, 1)[0];
-          for (let p = intervals[inv].length - 1; p >= 0; p--) {
-            const pair = intervals[inv][p];
-            if (pair.indexOf(del_id) >= 0) intervals[inv].splice(p, 1);
-          }
-          if (intervals[inv].length == 0) delete intervals[inv];
+      const del_id = subtree[i];
+      const del_i = sections.findIndex(s => s.id == del_id);
+      //sections and index
+      sections.splice(del_i, 1);
+      delete index[subtree[i]];
+      //interval map cleaning
+      relations[del_i].forEach(int => {
+        for (let p = intervals[int].length - 1; p >= 0; p--) {
+          const pair = intervals[int][p];
+          if (pair.indexOf(del_id) >= 0) intervals[int].splice(p, 1);
         }
+        if (intervals[int].length == 0) delete intervals[int];
+      })
+      //row deletion
+      relations.splice(del_i, 1);
+      //column deletion + inversion intervals
+      for (let c = 0; c < relations.length; c++) {
+        const inv = relations[c].splice(del_i, 1)[0];
+        for (let p = intervals[inv].length - 1; p >= 0; p--) {
+          const pair = intervals[inv][p];
+          if (pair.indexOf(del_id) >= 0) intervals[inv].splice(p, 1);
+        }
+        if (intervals[inv].length == 0) delete intervals[inv];
+      }
     }
     return true;
   }
@@ -380,9 +432,9 @@ export default class Canon {
     return mt.map(row => row.map(r => {
       const ratio = this.getRatio(r);
       let cell = `${ratio.frac[0]}:${ratio.frac[1]}${ratio.temperament != 0
-          ? (ratio.temperament > 0 ? '+' : '-')
-          + decimal_to_fraction(this.comma / Math.abs(ratio.temperament), 100).join('/')
-          : ''
+        ? (ratio.temperament > 0 ? '+' : '-')
+        + decimal_to_fraction(this.comma / Math.abs(ratio.temperament), 100).join('/')
+        : ''
         }`;
       cell = new Array(6 - cell.indexOf(':')).join(" ") + cell;
       cell += new Array(12 - cell.length).join(" ");
