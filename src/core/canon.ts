@@ -39,15 +39,16 @@ export const check_sections_validity = (sections: Array<section>): number => {
   let result_code = 1;
   if (sections.length === 0) return result_code;
   if (sections[0].id != 0) result_code *= 2;//covers negats and non-zero roots
+  const name_set = new Set();
+  const code_set = new Set();
   sections.forEach((section, i) => {
-    if (section.id === undefined) result_code *= 2;
-    const same_id_i = sections.findIndex(el => el.id == section.id)
-    if (same_id_i >= 0 && same_id_i < i) result_code *= 3;
-    const parent_i = sections.findIndex(el => el.id == section.parent)
-    if (parent_i >= 0 && parent_i >= i) result_code *= 5;
-    if (section.parent === undefined) result_code *= 5;
-    if (typeof section.rtp != "number" && !valid_frac(section.rtp)) result_code *= 7;
+    if (section.parent === undefined) result_code *= 3;
+    if (typeof section.rtp != "number" && !valid_frac(section.rtp)) result_code *= 5;
+    name_set.add(section.name);
+    code_set.add(section.code);
+    if (section.code.length > 3) result_code *= 7;
   });
+  if (name_set.size != sections.length || code_set.size != sections.length) result_code *= 7;
   return result_code;
 }
 export const check_schema_validity = (schema: canon_schema) => {
@@ -72,10 +73,10 @@ export const check_schema_validity = (schema: canon_schema) => {
 const error_msg = (code: number) => {
   let msg = "";
   const ERROR: { [key: number]: string } = {
-    2: "corrupted section id",
-    3: "duplicate section ids",
-    5: "corrupted parent hierarchy",
-    7: "invalid section",
+    2: "undefined section id",
+    3: "undefined section parent",
+    5: "invalid rtio to parent",
+    7: "invalid section namings",
     11: "invalid period",
     13: "invalid comma euler",
     17: "invalid range",
@@ -107,19 +108,14 @@ export default class Canon {
     }
 
     const data = { ...DEFAULT_SCHEMA, ...schema, } as canon_schema;
-    data.sections.sort((a, b) => a.id - b.id);
     const error_code = check_schema_validity(data);
     if (error_code > 1) {
       throw Error(error_msg(error_code) + "\n" + JSON.stringify(data));
     }
-    //CANON CACHE
     const size = data.sections.length;
     const period = data.params.period === null
       ? 0
       : getEuler(data.params.period)
-
-    const rm = data.params.limit ? new RatioMap(data.params.limit, data.params.range) : null;
-    if (rm) private_rmaps.set(this, rm);
 
     //SECTIONS CACHE
     const sections = data.sections;
@@ -132,20 +128,37 @@ export default class Canon {
         rtp: 0
       } as section;
     }
-
+    /** array */
+    const id_set = new Set();
     /** id index to sections array */
     const s_index: section_index = { 0: sections[0] };
-    s_index[0].rtr = 0;//root ratio to itself
-    s_index[0].children = [];
-    for (let i = 1; i < size; i++) {
-      const sec = sections[i];
-      sec.children = [];
-      s_index[sec.id] = sections[i];
-      s_index[sec.id].rtr = (getEuler(sec.rtp) + s_index[sec.parent].rtr) % (period || Infinity);
-      (s_index[sec.parent].children as number[]).push(sec.id);
+    for (let i = 0; i < size; i++){
+      const id = sections[i].id;
+      if (id >= 0) id_set.add(id);
+      s_index[id] = sections[i];
+      s_index[id].children = [];
     }
+    if (id_set.size !=  size || s_index[0] == undefined) throw Error("corrupted sections tree");
+    
+    s_index[0].rtr = 0;
+    const id_pool = Array.from(id_set) as number[];
+    const queue = id_pool.splice(id_pool.indexOf(0),1);
+    while (queue.length > 0){
+      const id = queue.shift();
+      for (let i = id_pool.length-1; i>=0; i--){
+        const child = id_pool[i];
+        if (s_index[child].parent == id){
+          s_index[child].rtr = (s_index[id].rtr + getEuler(s_index[child].rtp)) % (period || Infinity);
+          (s_index[id].children as number[]).push(child);
+          queue.push(id_pool.splice(i, 1)[0]);
+        }
+      }
+    }
+    if (id_pool.length > 0) throw Error("corrupted sections tree");
+    data.sections.sort((a, b) => a.id - b.id);//order is irrelevant to ratio
     private_data.set(this, { ...data, s_index });
 
+    //CANON CACHE
     const relations = new Array<Array<number>>(size);
     const intervals = { 0: [] } as intrv_incendence;
 
@@ -172,7 +185,8 @@ export default class Canon {
       intervals
     });
 
-    //update_cache(this, { root: 0, rtp: 0, parent: NaN });
+    const rm = data.params.limit ? new RatioMap(data.params.limit, data.params.range) : null;
+    private_rmaps.set(this, rm);
   }
   get id() { return private_data.get(this).id }
   get code() { return private_data.get(this).code }
@@ -274,9 +288,7 @@ export default class Canon {
     //CACHE UPD
     relations.splice(new_i, 0, new Array<number>(size));
     for (let a = 0; a < size + 1; a++) {
-      let recto = a < new_i
-        ? round_12(rtr - sections[a].rtr)
-        : round_12(sections[a].rtr - rtr);
+      let recto = round_12(rtr - sections[a].rtr);
       if (recto < 0) recto = round_12(period + recto);
       const inverso = round_12(period - recto);
       relations[a].splice(new_i, 0, recto);
@@ -341,9 +353,7 @@ export default class Canon {
 
       //CACHE UPD
       for (let a = 0; a < sections.length; a++) {
-        let recto = a < sec_i
-          ? round_12(rtr - sections[a].rtr)
-          : round_12(sections[a].rtr - rtr);
+        let recto = round_12(rtr - sections[a].rtr);
         if (recto < 0) recto = round_12(period + recto);
         const inverso = round_12(period - recto);
         
