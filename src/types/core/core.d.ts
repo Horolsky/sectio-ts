@@ -21,7 +21,6 @@ type rm_record = {
   /** prime factorisation */
   readonly fact: pfv
 };
-type interval = number | fraction | rm_record | Ratio;
 /** RatioMap jsonized data */
 type rm_data = {
   ratios: rm_record[],
@@ -86,17 +85,16 @@ type canon_schema = {
   params: canon_params,
   sections: section[]
 }
-
-
-interface intrv_incendence {
-  [key: number]: {
-    pairs: number[][],
-    ratio: Ratio
-  }
+/** canon interval record */
+type interval = {
+  pairs: number[][],
+  ratio: Ratio
 }
-interface ratio_dict {
-  [key: number]: Ratio | RationalApproximation,
+/** canon interval dictionary */
+type intrv_dict = {
+  [key: number]: interval
 }
+
 type canon_cache = {
   /** number of sections */
   size: number,
@@ -107,7 +105,7 @@ type canon_cache = {
   /** complete adjacency matrix of sections relations */
   relations_mt: number[] | Ratio[],
   /** interval incedence list where values are list of sections id tuples*/
-  interval_incedence: intrv_incendence,
+  interval_incedence: intrv_dict,
   /** heuristic property: ratiodict generated from ratiomap*/
   ratiodict?: ratio_dict,
   /** heuristic property: adjacency matrix of heuristic generator intervals */

@@ -162,8 +162,9 @@ export default class Canon {
 
     //CANON CACHE
     const relations = new Array<Array<number>>(size);
-    const intervals = { 0: {pairs: [], ratio: new Ratio({2:0})} } as intrv_incendence;
-
+    const intervals = { 0: {pairs: [], ratio: new Ratio({2:0})} } as intrv_dict;
+    /** interval reference matrix */
+    const intv_ref = new Array<Array<intrv_dict>>(size);
     for (let a = 0; a < size; a++) {
       relations[a] = new Array<number>(size);
       relations[a][a] = 0;
@@ -248,7 +249,7 @@ export default class Canon {
     const size = sections.length;
     const cache = private_cache.get(this);
     const relations = cache.relations as Array<Array<number>>;
-    const intervals = cache.intervals as intrv_incendence;
+    const intervals = cache.intervals as intrv_dict;
 
     const parent_i = sections.findIndex(s => s.id == parent);
     if (parent_i < 0) throw Error("invalid parent id");
@@ -326,7 +327,7 @@ export default class Canon {
     const index = data.s_index as section_index;
     const cache = private_cache.get(this);
     const relations = cache.relations as Array<Array<number>>;
-    const intervals = cache.intervals as intrv_incendence;
+    const intervals = cache.intervals as intrv_dict;
     const sec_i = sections.findIndex(s => s.id == id);
     if (sec_i < 0) return false;
     if (
@@ -371,8 +372,10 @@ export default class Canon {
         const old_inverso = relations[sec_i][a]; 
         relations[a][sec_i] = recto;
         relations[sec_i][a] = inverso;
-        intervals[old_recto].pairs.splice(intervals[old_recto].pairs.findIndex(pair=>pair.indexOf(id)>=0));
+        
+        intervals[old_recto].pairs.splice(intervals[old_recto].pairs.findIndex(pair=>(pair as number[]).indexOf(id)>=0));
         intervals[old_inverso].pairs.splice(intervals[old_inverso].pairs.findIndex(pair=>pair.indexOf(id)>=0));
+        
         intervals[recto] == undefined
           ? intervals[recto] = {
             pairs: [[ sections[a].id, id]],
@@ -396,7 +399,7 @@ export default class Canon {
     const index = data.s_index as section_index;
     const cache = private_cache.get(this);
     const relations = cache.relations as Array<Array<number>>;
-    const intervals = cache.intervals as intrv_incendence;
+    const intervals = cache.intervals as intrv_dict;
     const sec_i = sections.findIndex(s => s.id == id);
     if (sec_i < 0) return false;
 
