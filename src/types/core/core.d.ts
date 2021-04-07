@@ -87,6 +87,7 @@ type canon_schema = {
 }
 /** canon interval record */
 type interval = {
+  euler: number
   pairs: number[][],
   ratio: Ratio
 }

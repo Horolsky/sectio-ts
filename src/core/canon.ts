@@ -161,32 +161,45 @@ export default class Canon {
     private_rmaps.set(this, rm);
 
     //CANON CACHE
-    const relations = new Array<Array<number>>(size);
-    const intervals = { 0: {pairs: [], ratio: new Ratio({2:0})} } as intrv_dict;
+    const relations = new Array<Array<interval>>(size);
+    
+    /** interval dictionary */
+    const intervals = { 
+      0: {
+        euler: 0,
+        pairs: [], 
+        ratio: new Ratio({2:0})
+      } 
+    } as intrv_dict;
     /** interval reference matrix */
     const intv_ref = new Array<Array<intrv_dict>>(size);
     for (let a = 0; a < size; a++) {
-      relations[a] = new Array<number>(size);
-      relations[a][a] = 0;
+      relations[a] = new Array<interval>(size);
+      relations[a][a] = intervals[0];
+
       intervals[0].pairs.push([sections[a].id, sections[a].id]);
       for (let b = 0; b < a; b++) {
         let recto = round_12((sections[a].rtr - sections[b].rtr) % (period || Infinity));
         if (recto < 0) recto = round_12(period + recto);
         const inverso = round_12(period - recto);
-        relations[b][a] = recto;
-        relations[a][b] = inverso;
+        
         intervals[recto] == undefined
           ? intervals[recto] = {
+            euler: recto,
             pairs: [[sections[b].id, sections[a].id]],
             ratio: this.rationalize(recto)
           }
           : intervals[recto].pairs.push([sections[b].id, sections[a].id]);
         intervals[inverso] == undefined
           ? intervals[inverso] = {
+            euler: inverso,
             pairs: [[sections[a].id, sections[b].id]],
             ratio: this.rationalize(inverso)
           }
           : intervals[inverso].pairs.push([sections[a].id, sections[b].id]);
+
+        relations[b][a] = intervals[recto];
+        relations[a][b] = intervals[inverso];
       }
     }
     private_cache.set(this, {
@@ -248,7 +261,7 @@ export default class Canon {
     const index = data.s_index as section_index;
     const size = sections.length;
     const cache = private_cache.get(this);
-    const relations = cache.relations as Array<Array<number>>;
+    const relations = cache.relations as Array<Array<interval>>;
     const intervals = cache.intervals as intrv_dict;
 
     const parent_i = sections.findIndex(s => s.id == parent);
@@ -292,27 +305,31 @@ export default class Canon {
     //INDEX REG
     index[new_id] = sections[new_i];
     //CACHE UPD
-    relations.splice(new_i, 0, new Array<number>(size));
+    relations.splice(new_i, 0, new Array<interval>(size));
     for (let a = 0; a < size + 1; a++) {
       let recto = round_12(rtr - sections[a].rtr);
       if (recto < 0) recto = round_12(period + recto);
       const inverso = round_12(period - recto);
-      relations[a].splice(new_i, 0, recto);
-      relations[new_i][a] = inverso;
+      
       intervals[recto] == undefined
         ? intervals[recto] = {
+          euler: recto,
           pairs: [[ sections[a].id, new_id]],
           ratio: this.rationalize(recto)
         }
         : intervals[recto].pairs.push([sections[a].id, new_id]);
       intervals[inverso] == undefined 
         ? intervals[inverso] = {
+          euler: inverso,
           pairs: [[new_id, sections[a].id]],
           ratio: this.rationalize(inverso)
         }
         : intervals[inverso].pairs.push([new_id, sections[a].id]);
+
+      relations[a].splice(new_i, 0, intervals[recto]);
+      relations[new_i][a] = intervals[inverso];
     }
-    relations[new_i][new_i] = 0;
+    relations[new_i][new_i] = intervals[0];
     return new_id;
   }
   edit_section({ id, name, code, parent, rtp }: {
@@ -326,7 +343,7 @@ export default class Canon {
     const sections = data.sections as Array<section>;
     const index = data.s_index as section_index;
     const cache = private_cache.get(this);
-    const relations = cache.relations as Array<Array<number>>;
+    const relations = cache.relations as Array<Array<interval>>;
     const intervals = cache.intervals as intrv_dict;
     const sec_i = sections.findIndex(s => s.id == id);
     if (sec_i < 0) return false;
@@ -368,28 +385,32 @@ export default class Canon {
         if (recto < 0) recto = round_12(period + recto);
         const inverso = round_12(period - recto);
         
-        const old_recto = relations[a][sec_i];
-        const old_inverso = relations[sec_i][a]; 
-        relations[a][sec_i] = recto;
-        relations[sec_i][a] = inverso;
+        const old_recto = relations[a][sec_i].euler;
+        const old_inverso = relations[sec_i][a].euler; 
+        
         
         intervals[old_recto].pairs.splice(intervals[old_recto].pairs.findIndex(pair=>(pair as number[]).indexOf(id)>=0));
         intervals[old_inverso].pairs.splice(intervals[old_inverso].pairs.findIndex(pair=>pair.indexOf(id)>=0));
         
         intervals[recto] == undefined
           ? intervals[recto] = {
+            euler: recto,
             pairs: [[ sections[a].id, id]],
             ratio: this.rationalize(recto)
           }
           : intervals[recto].pairs.push([sections[a].id, id]);
         intervals[inverso] == undefined 
           ? intervals[inverso] = {
+            euler: inverso,
             pairs: [[id, sections[a].id]],
             ratio: this.rationalize(inverso)
           }
           : intervals[inverso].pairs.push([id, sections[a].id]);
+
+        relations[a][sec_i] = intervals[recto];
+        relations[sec_i][a] = intervals[inverso];
       }
-      relations[sec_i][sec_i] = 0;
+      relations[sec_i][sec_i] = intervals[0];
     }
     return true;
   }
@@ -398,7 +419,7 @@ export default class Canon {
     const sections = data.sections as Array<section>;
     const index = data.s_index as section_index;
     const cache = private_cache.get(this);
-    const relations = cache.relations as Array<Array<number>>;
+    const relations = cache.relations as Array<Array<interval>>;
     const intervals = cache.intervals as intrv_dict;
     const sec_i = sections.findIndex(s => s.id == id);
     if (sec_i < 0) return false;
@@ -411,23 +432,23 @@ export default class Canon {
       sections.splice(del_i, 1);
       delete index[subtree[i]];
       //interval map cleaning
-      relations[del_i].forEach(int => {
-        for (let p = intervals[int].pairs.length - 1; p >= 0; p--) {
-          const pair = intervals[int].pairs[p];
-          if (pair.indexOf(del_id) >= 0) intervals[int].pairs.splice(p, 1);
+      relations[del_i].forEach(intv => {
+        for (let p = intv.pairs.length - 1; p >= 0; p--) {
+          const pair = intv.pairs[p];
+          if (pair.indexOf(del_id) >= 0) intv.pairs.splice(p, 1);
         }
-        if (intervals[int].pairs.length == 0) delete intervals[int];
+        if (intv.pairs.length == 0) delete intervals[intv.euler];
       })
       //row deletion
       relations.splice(del_i, 1);
       //column deletion + inversion intervals
       for (let c = 0; c < relations.length; c++) {
         const inv = relations[c].splice(del_i, 1)[0];
-        for (let p = intervals[inv].pairs.length - 1; p >= 0; p--) {
-          const pair = intervals[inv].pairs[p];
-          if (pair.indexOf(del_id) >= 0) intervals[inv].pairs.splice(p, 1);
+        for (let p = inv.pairs.length - 1; p >= 0; p--) {
+          const pair = inv.pairs[p];
+          if (pair.indexOf(del_id) >= 0) inv.pairs.splice(p, 1);
         }
-        if (intervals[inv].pairs.length == 0) delete intervals[inv];
+        if (inv.pairs.length == 0) delete intervals[inv.euler];
       }
     }
     return true;
@@ -440,12 +461,14 @@ export default class Canon {
     sections.forEach(s => delete index[s.id]);
     sections.splice(1, size - 1);
     index[0] = sections[0];
+    const intervals = { 0: {
+      euler: 0,
+      pairs: [[0, 0]],
+      ratio: new Ratio({2: 0})
+    } } as intrv_dict;
     private_cache.set(this, {
-      relations: [[0]],
-      intervals: { 0: {
-        pairs: [[0, 0]],
-        ratio: new Ratio({2: 0})
-      } }
+      relations: [[intervals[0]]],
+      intervals
     });
     return 0;
   }
@@ -458,25 +481,25 @@ export default class Canon {
   }
   /** print relation matrix in ratio form */
   print_relmt_r() {
-    const mt = this.cache.relations as Array<Array<number>>;
+    const mt = this.cache.relations as Array<Array<interval>>;
     return mt.map(row => row.map(r => {
-      const ratio = this.rationalize(r);
-      let cell = `${ratio.frac[0]}:${ratio.frac[1]}${ratio.temperament != 0
+      const ratio = r.ratio;
+      const cell = `${ratio.frac[0]}:${ratio.frac[1]}${ratio.temperament != 0
         ? (ratio.temperament > 0 ? '+' : '-')
         + decimal_to_fraction(this.comma / Math.abs(ratio.temperament), 100).join('/')
         : ''
         }`;
-      cell = new Array(6 - cell.indexOf(':')).join(" ") + cell;
-      cell += new Array(12 - cell.length).join(" ");
+      //cell = new Array(6 - cell.indexOf(':')).join(" ") + cell;
+      //cell += new Array(12 - cell.length).join(" ");
       return cell;
     }).join("\t\t")
     ).join("\n")
   }
   /** print relation matrix in euler form */
   print_relmt_e() {
-    const mt = this.cache.relations as Array<Array<number>>;
+    const mt = this.cache.relations as Array<Array<interval>>;
     return mt.map(row => row.map(r => {
-      const _r = `${r.toFixed(6)}`;
+      const _r = `${r.euler.toFixed(6)}`;
       const L = _r.indexOf('.');
       const R = _r.length - L - 4;
       return new Array(4 - L).join(" ")
