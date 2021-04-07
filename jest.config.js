@@ -1,6 +1,14 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  globals: {
+    'ts-jest': {
+      tsConfig: {
+        target: 'ES2019'
+      },
+      //babelConfig: true//'.babelrc',
+    }
+  },
   roots: [
     "<rootDir>/src"
   ],
