@@ -89,7 +89,10 @@ type canon_schema = {
 
 
 interface intrv_incendence {
-  [key: number]: number[][]
+  [key: number]: {
+    pairs: number[][],
+    ratio: Ratio
+  }
 }
 interface ratio_dict {
   [key: number]: Ratio | RationalApproximation,
