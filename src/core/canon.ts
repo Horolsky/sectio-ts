@@ -157,36 +157,41 @@ export default class Canon {
     if (id_pool.length > 0) throw Error("corrupted sections tree");
     data.sections.sort((a, b) => a.id - b.id);//order is irrelevant to ratio
     private_data.set(this, { ...data, s_index });
+    const rm = data.params.limit ? new RatioMap(data.params.limit, data.params.range) : null;
+    private_rmaps.set(this, rm);
 
     //CANON CACHE
     const relations = new Array<Array<number>>(size);
-    const intervals = { 0: [] } as intrv_incendence;
+    const intervals = { 0: {pairs: [], ratio: new Ratio({2:0})} } as intrv_incendence;
 
     for (let a = 0; a < size; a++) {
       relations[a] = new Array<number>(size);
       relations[a][a] = 0;
-      intervals[0].push([sections[a].id, sections[a].id]);
+      intervals[0].pairs.push([sections[a].id, sections[a].id]);
       for (let b = 0; b < a; b++) {
         let recto = round_12((sections[a].rtr - sections[b].rtr) % (period || Infinity));
         if (recto < 0) recto = round_12(period + recto);
         const inverso = round_12(period - recto);
         relations[b][a] = recto;
         relations[a][b] = inverso;
-        if (intervals[recto] == undefined) {
-          intervals[recto] = new Array<number[]>();
-          intervals[inverso] = new Array<number[]>();
-        }
-        intervals[recto].push([sections[b].id, sections[a].id]);
-        intervals[inverso].push([sections[a].id, sections[b].id]);
+        intervals[recto] == undefined
+          ? intervals[recto] = {
+            pairs: [[sections[b].id, sections[a].id]],
+            ratio: this.rationalize(recto)
+          }
+          : intervals[recto].pairs.push([sections[b].id, sections[a].id]);
+        intervals[inverso] == undefined
+          ? intervals[inverso] = {
+            pairs: [[sections[a].id, sections[b].id]],
+            ratio: this.rationalize(inverso)
+          }
+          : intervals[inverso].pairs.push([sections[a].id, sections[b].id]);
       }
     }
     private_cache.set(this, {
       relations,
       intervals
     });
-
-    const rm = data.params.limit ? new RatioMap(data.params.limit, data.params.range) : null;
-    private_rmaps.set(this, rm);
   }
   get id() { return private_data.get(this).id }
   get code() { return private_data.get(this).code }
@@ -293,13 +298,18 @@ export default class Canon {
       const inverso = round_12(period - recto);
       relations[a].splice(new_i, 0, recto);
       relations[new_i][a] = inverso;
-
-      intervals[recto]
-        ? intervals[recto].push([sections[a].id, new_id])
-        : intervals[recto] = [[sections[a].id, new_id]];
-      intervals[inverso]
-        ? intervals[inverso].push([new_id, sections[a].id])
-        : intervals[inverso] = [[new_id, sections[a].id]];
+      intervals[recto] == undefined
+        ? intervals[recto] = {
+          pairs: [[ sections[a].id, new_id]],
+          ratio: this.rationalize(recto)
+        }
+        : intervals[recto].pairs.push([sections[a].id, new_id]);
+      intervals[inverso] == undefined 
+        ? intervals[inverso] = {
+          pairs: [[new_id, sections[a].id]],
+          ratio: this.rationalize(inverso)
+        }
+        : intervals[inverso].pairs.push([new_id, sections[a].id]);
     }
     relations[new_i][new_i] = 0;
     return new_id;
@@ -361,16 +371,20 @@ export default class Canon {
         const old_inverso = relations[sec_i][a]; 
         relations[a][sec_i] = recto;
         relations[sec_i][a] = inverso;
-  
-        intervals[old_recto].splice(intervals[old_recto].findIndex(pair=>pair.indexOf(id)>=0));
-        intervals[old_inverso].splice(intervals[old_inverso].findIndex(pair=>pair.indexOf(id)>=0));
-        
-        intervals[recto]
-          ? intervals[recto].push([sections[a].id, id])
-          : intervals[recto] = [[sections[a].id, id]];
-        intervals[inverso]
-          ? intervals[inverso].push([id, sections[a].id])
-          : intervals[inverso] = [[id, sections[a].id]];
+        intervals[old_recto].pairs.splice(intervals[old_recto].pairs.findIndex(pair=>pair.indexOf(id)>=0));
+        intervals[old_inverso].pairs.splice(intervals[old_inverso].pairs.findIndex(pair=>pair.indexOf(id)>=0));
+        intervals[recto] == undefined
+          ? intervals[recto] = {
+            pairs: [[ sections[a].id, id]],
+            ratio: this.rationalize(recto)
+          }
+          : intervals[recto].pairs.push([sections[a].id, id]);
+        intervals[inverso] == undefined 
+          ? intervals[inverso] = {
+            pairs: [[id, sections[a].id]],
+            ratio: this.rationalize(inverso)
+          }
+          : intervals[inverso].pairs.push([id, sections[a].id]);
       }
       relations[sec_i][sec_i] = 0;
     }
@@ -395,22 +409,22 @@ export default class Canon {
       delete index[subtree[i]];
       //interval map cleaning
       relations[del_i].forEach(int => {
-        for (let p = intervals[int].length - 1; p >= 0; p--) {
-          const pair = intervals[int][p];
-          if (pair.indexOf(del_id) >= 0) intervals[int].splice(p, 1);
+        for (let p = intervals[int].pairs.length - 1; p >= 0; p--) {
+          const pair = intervals[int].pairs[p];
+          if (pair.indexOf(del_id) >= 0) intervals[int].pairs.splice(p, 1);
         }
-        if (intervals[int].length == 0) delete intervals[int];
+        if (intervals[int].pairs.length == 0) delete intervals[int];
       })
       //row deletion
       relations.splice(del_i, 1);
       //column deletion + inversion intervals
       for (let c = 0; c < relations.length; c++) {
         const inv = relations[c].splice(del_i, 1)[0];
-        for (let p = intervals[inv].length - 1; p >= 0; p--) {
-          const pair = intervals[inv][p];
-          if (pair.indexOf(del_id) >= 0) intervals[inv].splice(p, 1);
+        for (let p = intervals[inv].pairs.length - 1; p >= 0; p--) {
+          const pair = intervals[inv].pairs[p];
+          if (pair.indexOf(del_id) >= 0) intervals[inv].pairs.splice(p, 1);
         }
-        if (intervals[inv].length == 0) delete intervals[inv];
+        if (intervals[inv].pairs.length == 0) delete intervals[inv];
       }
     }
     return true;
@@ -425,11 +439,14 @@ export default class Canon {
     index[0] = sections[0];
     private_cache.set(this, {
       relations: [[0]],
-      intervals: { 0: [[0, 0]] }
+      intervals: { 0: {
+        pairs: [[0, 0]],
+        ratio: new Ratio({2: 0})
+      } }
     });
     return 0;
   }
-  getRatio(val: number | fraction) {
+  private rationalize(val: number | fraction) {
     return valid_frac(val)
       ? new Ratio(val)
       : this.limit
@@ -440,7 +457,7 @@ export default class Canon {
   print_relmt_r() {
     const mt = this.cache.relations as Array<Array<number>>;
     return mt.map(row => row.map(r => {
-      const ratio = this.getRatio(r);
+      const ratio = this.rationalize(r);
       let cell = `${ratio.frac[0]}:${ratio.frac[1]}${ratio.temperament != 0
         ? (ratio.temperament > 0 ? '+' : '-')
         + decimal_to_fraction(this.comma / Math.abs(ratio.temperament), 100).join('/')
