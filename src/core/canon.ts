@@ -1,6 +1,6 @@
 import { put_to_sorted } from "../utils/object";
 import { APPROX_PRIMES } from "./constants";
-import { decimal_to_fraction, round_12, valid_frac } from "./math";
+import { decimal_to_fraction, is_int, round_12, valid_frac } from "./math";
 import { factorize_float, factorize_int, fraction_to_euler, is_valid } from "./pfv-methods";
 import Ratio from "./ratio";
 import RatioMap from "./ratiomap";
@@ -38,11 +38,11 @@ export const DEFAULT_SCHEMA: canon_schema = {
 export const check_sections_validity = (sections: Array<section>): number => {
   let result_code = 1;
   if (sections.length === 0) return result_code;
-  if (sections[0].id != 0) result_code *= 2;//covers negats and non-zero roots
   const name_set = new Set();
   const code_set = new Set();
-  sections.forEach((section, i) => {
-    if (section.parent === undefined) result_code *= 3;
+  sections.forEach(section => {
+    if (!is_int(section.id)) result_code *= 2;
+    if (!is_int(section.parent)) result_code *= 3;
     if (typeof section.rtp != "number" && !valid_frac(section.rtp)) result_code *= 5;
     name_set.add(section.name);
     code_set.add(section.code);
