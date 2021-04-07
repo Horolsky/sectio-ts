@@ -1,5 +1,5 @@
 import RatioMap from '../ratiomap';
-import Canon from '../canon'
+import Canon from '../canon';
 import { expect, test } from '@jest/globals';
 import { S_COMMA } from '../constants';
 import db from '../../db/firestore';
@@ -21,6 +21,8 @@ test('creating Canon from db doc', async ()=>{
     if (doc.exists) {
         const c = new Canon(doc.data());
         expect(c.limit).toBe(5);
+        c.update_relations(6, 0, null);
+        expect(c.data.sections.length).toBe(6);
     }
     expect(doc.exists).toBe(true);
 })
