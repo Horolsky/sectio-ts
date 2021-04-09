@@ -8,6 +8,8 @@ type plimit = 2 | 3 | 5 | 7 | 11 | 13 | 17;
 
 //type fraction = [number, number];
 type fraction = Tuple<number, 2>
+
+type proper_frac = {sgn:number, int: number, num:number, den: number};
 /** 
  * prime factorisation vector {key: prime, value: power}
  * temperament stored on p-2 value,
