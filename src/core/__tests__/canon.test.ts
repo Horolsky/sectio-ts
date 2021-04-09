@@ -1,4 +1,3 @@
-import RatioMap from '../ratiomap';
 import Canon from '../canon';
 import { expect, test } from '@jest/globals';
 import { S_COMMA } from '../constants';
@@ -6,7 +5,6 @@ import db from '../../db/firestore';
 
 test('creating Canon inst, correct: default values', ()=>{
     const x = new Canon();
-    expect(x.ratiomap instanceof RatioMap).toBe(true);
     expect(x.period).toBe(1);
     expect(x.comma).toBe(S_COMMA);
 })
