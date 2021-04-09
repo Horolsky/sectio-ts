@@ -1,9 +1,10 @@
 import { put_to_sorted } from "../utils/object";
-import { APPROX_PRIMES } from "./constants";
+import { APPROX_PRIMES, S_COMMA } from "./constants";
 import { decimal_to_fraction, is_int, round_12, valid_frac } from "./math";
 import { factorize_float, factorize_int, fraction_to_euler, is_valid } from "./pfv-methods";
 import Ratio from "./ratio";
-import RatioMap from "./ratiomap";
+import {get_ratio_map} from "./ratiomap";
+import { get_tm_map } from "./tempmap";
 
 const getEuler = (val: number | fraction): number => {
   return valid_frac(val)
@@ -26,7 +27,7 @@ export const DEFAULT_SCHEMA: canon_schema = {
     period: 1,
     limit: 5,
     range: 24,
-    comma: Math.log2(81) - Math.log2(80),
+    comma: S_COMMA//Math.log2(81) - Math.log2(80),
   },
   sections: [],
 };
@@ -92,6 +93,7 @@ const error_msg = (code: number) => {
 const private_data = new WeakMap();
 const private_cache = new WeakMap();
 const private_rmaps = new WeakMap();
+const private_tmaps = new WeakMap();
 
 export default class Canon {
 
@@ -157,8 +159,9 @@ export default class Canon {
     if (id_pool.length > 0) throw Error("corrupted sections tree");
     data.sections.sort((a, b) => a.id - b.id);//order is irrelevant to ratio
     private_data.set(this, { ...data, s_index });
-    const rm = data.params.limit ? new RatioMap(data.params.limit, data.params.range) : null;
+    const rm = data.params.limit ? get_ratio_map(data.params.limit, data.params.range) : null;
     private_rmaps.set(this, rm);
+    private_tmaps.set(this, get_tm_map(getEuler(data.params.comma)));
 
     //CANON CACHE
     const relations = new Array<Array<interval>>(size);
@@ -221,6 +224,7 @@ export default class Canon {
   get comma() { return private_data.get(this).params.comma }
 
   get ratiomap() { return private_rmaps.get(this) }
+  get tempmap() { return private_tmaps.get(this) }
 
   get data() { return private_data.get(this) }
   get cache() { return private_cache.get(this) }
@@ -492,7 +496,7 @@ export default class Canon {
       params.range = range ?? params.range; 
       params.limit = limit ?? params.limit;
 
-      const rm = params.limit ? new RatioMap(params.limit, params.range) : null;
+      const rm = params.limit ? get_ratio_map(params.limit, params.range) : null;
       private_rmaps.set(this, rm);
       
       const intervals = private_cache.get(this).intervals as intrv_dict;
