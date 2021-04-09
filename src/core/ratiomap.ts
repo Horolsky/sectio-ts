@@ -1,14 +1,15 @@
 import { is_int } from './math';
 import PositionalCombos from './combos'
 import { APPROX_PRIMES, PREC } from "./constants";
-import Ratio from "./ratio";
 import {get_exact_euler} from './pfv-methods'
 
+const rm_cache = new Map<string, RatioMap>();
+
 /**
- * immutable class for p-limit approximation of tuning systems
+ * immutable class for p-limit approximation of tuning systems\
  * creates a map of ratios in a given params, reduced to one octave
  */
-export default class RatioMap extends Array {
+export class RatioMap extends Array {
   /** max ranges corresponding to p-limit */
   static readonly max_ranges = [1e7, 1e7, 1e6, 6e5, 6e3, 1e3, 300];
   /** p-limit: max prime factor in system */
@@ -144,3 +145,49 @@ export default class RatioMap extends Array {
     return fact;
   }
 }
+
+export const get_ratio_map = (limit: plimit, range: number) => {
+  if (!is_int(limit) || !is_int(range)) throw Error("non integer arguments");
+  const id = `RM-${limit}-${range}`;
+  if (rm_cache.has(id)) { 
+    return rm_cache.get(id);
+  }
+  else {
+    const data = localStorage.getItem(id);
+    const rm = data ? new RatioMap(JSON.parse(data) as rm_data) : new RatioMap(limit, range);
+    rm_cache.set(id, rm);
+    return rm;
+  }
+}
+
+export const clear_rm_cache = () => rm_cache.clear();
+
+export const store_rm_cache = () => {
+  for (const id in rm_cache.keys()) {
+    if (!localStorage.getItem(id)) localStorage.setItem(id, (rm_cache.get(id) as RatioMap).to_json());
+  }
+};
+export const storage_index = () => {
+  const index: string[] = [];
+  for (const key in localStorage){
+    if (key.slice(0,3) === "RM-") index.push(key);
+  }
+  return index;
+};
+export const storage_size = () => {
+  let size = 0;
+  const encoder = new TextEncoder();
+  for (const key in storage_index()){
+    const item = localStorage.getItem(key);
+    if (item) size += encoder.encode(item).length;
+  }
+  return size;
+};
+
+export default {
+  get_ratio_map,
+  clear_rm_cache,
+  store_rm_cache,
+  storage_index,
+  storage_size
+};
