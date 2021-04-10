@@ -37,12 +37,12 @@ export class TempMap {
     }
 }
 
-export const get_tm_map = (comma = S_COMMA, range = COMMA_RANGE) => {
+export const get_tm_map = (comma = S_COMMA, range = COMMA_RANGE): TempMap => {
     if (!(comma > 0 && is_int(range) && range > 0)) throw Error("non integer arguments");
 
     const id = `TM-${range}-${comma}`;
     if (tm_cache.has(id)) {
-        return tm_cache.get(id);
+        return tm_cache.get(id) as TempMap;
     }
     else {
         const tm = new TempMap(comma, range);
