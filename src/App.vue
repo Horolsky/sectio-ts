@@ -4,6 +4,7 @@
     <gRatio
       :ratio="test_gRatio"
     />
+    <p>{{gogi}}</p>
   </div>
   
 </template>
@@ -28,11 +29,15 @@ export default Vue.extend({
   }),
   computed : {
     test_gRatio() {
-      const rels = STORE.canon.relations;//this.$store.getters["canon/relations"];
-      const ratio = rels ? rels?.[0][2].ratio : {frac: [1,1], temperament: 0};
+      const rels = STORE.CANON?.relations;//this.$store.getters["canon/relations"];
+      const ratio = (rels && rels.length > 3) ? rels?.[0][2].ratio : {frac: [1,1], temperament: 0};
       
       return { num: ratio.frac[0], den: ratio.frac[1], tmp: ratio.temperament };
+    },
+    gogi() {
+      return JSON.stringify(STORE.CANON?.relations)
     }
+
   }
 });
 </script>
