@@ -228,6 +228,8 @@ export default class Canon {
 
   get data() { return private_data.get(this) }
   get cache() { return private_cache.get(this) }
+  get relations() { return private_cache.get(this).relations as interval[][] }
+  get intervals() { return private_cache.get(this).intervals as intrv_dict }
   get s_index() { return private_data.get(this)?.s_index as section_index }
   get size() {return private_data.get(this).sections.length }
   get_subtree(root: number) {
@@ -492,7 +494,7 @@ export default class Canon {
     if (period != undefined && this.size === 1){
       params.period = period;
     }
-    if (range != undefined && limit != undefined){
+    if (range != undefined || limit != undefined){
       params.range = range ?? params.range; 
       params.limit = limit ?? params.limit;
 
@@ -503,6 +505,30 @@ export default class Canon {
       for (const i in intervals){
         intervals[i].ratio = this.rationalize(intervals[i].euler);
       }
+    }
+  }
+  update_info({ id, name, code, description, tags }:{
+    id?: number,
+    name?: string,
+    code?: string,
+    description?: string,
+    tags?: string[]
+  }) {
+    const data = private_data.get(this);
+    if (id != undefined && is_int(id)){
+      data.id = id;
+    }
+    if (name != undefined && typeof name === "string"){
+      data.name = name;
+    }
+    if (code != undefined && typeof code === "string"){
+      data.code = code;
+    }
+    if (description != undefined && typeof description === "string"){
+      data.description = description;
+    }
+    if (tags != undefined && Array.isArray(tags)){
+      data.tags = tags;
     }
   }
   private rationalize(val: number | fraction) {
