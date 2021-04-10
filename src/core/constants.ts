@@ -1,5 +1,7 @@
 /** logarithmic calculation precision */
 export const PREC = 6e-13;
+/** temperament calculation precision */
+export const TEMP_PREC = 25e-12;
 //tested on difference of exact log2 values with toFixed(12)
 //min for comma division: 5e-14, min 64-bit: 3.552713678800501e-15
 /** log2 of syntonic comma (81/80) */

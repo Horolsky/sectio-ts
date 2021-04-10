@@ -77,7 +77,7 @@ export const get_primes = (range: number, start = 2): number[] => {
 export const decimal_to_fraction = (
   value: number,
   range = 1000,
-  precision = 1e-16
+  precision = PREC
 ):fraction => {
   const sign = Math.sign(value);
   const absval = Math.abs(value);

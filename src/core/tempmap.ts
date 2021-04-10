@@ -1,4 +1,4 @@
-import { COMMA_RANGE, S_COMMA } from "./constants";
+import { COMMA_RANGE, S_COMMA, TEMP_PREC } from "./constants";
 import { decimal_to_fraction, is_int, round_12 } from "./math";
 
 const private_props = new WeakMap();
@@ -22,7 +22,7 @@ export class TempMap {
         if (euler in map) record = map[euler];
         else {
             const sgn = Math.sign(euler);
-            const [num, den] = decimal_to_fraction(Math.abs(euler) / this.comma, this.range);
+            const [num, den] = decimal_to_fraction(Math.abs(euler) / this.comma, this.range, TEMP_PREC);
             const int = Math.trunc(num/den);
             record = {sgn, int, num: num % den, den};
             map[euler] = record;

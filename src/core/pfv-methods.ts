@@ -133,7 +133,7 @@ export const get_rational_euler = (fact: pfv) => {
 };
 /** return euler value of temperament, stored on 2-p power */
 export const get_temperament = (fact: pfv) => {
-  return Math.round(fact[2]) - fact[2];
+  return fact[2] - Math.round(fact[2]);
 };
 /** factorisation vector to decimal value */
 export const get_decimal = (fact: pfv) => {

@@ -122,6 +122,7 @@ export class RatioMap extends Array {
     
     const norm_eul = Math.abs(euler) % 1;
     const octaves = Math.trunc(euler);
+    const sign = Math.sign(euler);
     
     //binary approximation search
     let start = 0,
@@ -139,7 +140,7 @@ export class RatioMap extends Array {
 
     const fact: pfv = {};
     for (const p in record.fact) fact[p] = euler > 0 && record.fact[p] != 0 ? record.fact[p] : -record.fact[p];
-    let temperament = euler - record.euler * Math.sign(euler) + octaves;
+    let temperament = (norm_eul - record.euler)*sign;// euler;// * Math.sign(euler);// + octaves;
     if (Math.abs(temperament) <= PREC) temperament = 0;
     2 in fact ? (fact[2] += octaves+temperament) : (fact[2] = octaves+temperament);
     return fact;
