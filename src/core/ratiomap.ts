@@ -153,7 +153,7 @@ export const get_ratio_map = (limit: plimit, range: number) => {
     return rm_cache.get(id);
   }
   else {
-    const data = localStorage.getItem(id);
+    const data = (localStorage as any).getItem(id);
     const rm = data ? new RatioMap(JSON.parse(data) as rm_data) : new RatioMap(limit, range);
     rm_cache.set(id, rm);
     return rm;
@@ -164,12 +164,12 @@ export const clear_rm_cache = () => rm_cache.clear();
 
 export const store_rm_cache = () => {
   for (const id in rm_cache.keys()) {
-    if (!localStorage.getItem(id)) localStorage.setItem(id, (rm_cache.get(id) as RatioMap).to_json());
+    if (!(localStorage as any).getItem(id)) (localStorage as any).setItem(id, (rm_cache.get(id) as RatioMap).to_json());
   }
 };
 export const storage_index = () => {
   const index: string[] = [];
-  for (const key in localStorage){
+  for (const key in (localStorage as any)){
     if (key.slice(0,3) === "RM-") index.push(key);
   }
   return index;
@@ -178,7 +178,7 @@ export const storage_size = () => {
   let size = 0;
   const encoder = new TextEncoder();
   for (const key in storage_index()){
-    const item = localStorage.getItem(key);
+    const item = (localStorage as any).getItem(key);
     if (item) size += encoder.encode(item).length;
   }
   return size;

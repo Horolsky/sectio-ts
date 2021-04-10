@@ -1,20 +1,21 @@
 <template>
 <div
-:innerHTML="html_view"/>
+v-html="html_view"
+/>
 </template>
 
 <script lang="ts">
-import { Options, Vue } from 'vue-class-component';
+import Vue from 'vue';
 import { get_tm_map, TempMap } from '@/core/tempmap';
 import { S_COMMA } from '@/core/constants';
 
-@Options({ 
+export default Vue.extend({ 
   name: 'gRatio',
   props: {
     ratio: {
       type: Object,
-      default: {
-        num: 1, den: 1, tmp: 0
+      default: () => {
+        return { num: 1, den: 1, tmp: 0 };
       }
     },
     kappa: {
@@ -32,22 +33,22 @@ import { S_COMMA } from '@/core/constants';
   computed: {
     html_view(){
       let tmp = "";
-      if (this.ratio.tmp != 0) {
-        const tm = get_tm_map(this.comma) as TempMap;
-        const {sgn, int, num, den} = tm.get_frac(this.ratio.tmp);
+      const vue = this as any;
+      if (vue.ratio.tmp != 0) {
+        const tm = get_tm_map(vue.comma) as TempMap;
+        const {sgn, int, num, den} = tm.get_frac(vue.ratio.tmp);
         const kappa = this.kappa ? " k" : "";
         tmp = num == 0 
               ? `${sgn > 0 ? '+' : '-'}${int || ''}${kappa}`.sup()
               : `${sgn > 0 ? '+' : '-'}${int || ''}<sup>${num}</sup>/<sub>${den}</sub>${kappa}`.sup();
       }
-      return `${this.ratio.num}:${this.ratio.den}${tmp}`;
+      return `${vue.ratio.num}:${vue.ratio.den}${tmp}`;
     }
   }
 })
 
-export default class Fraction extends Vue {}
 </script>
 
 <style>
-  /*@import "../node_modules/katex/dist/katex.min.css";*/
+  
 </style>

@@ -1,32 +1,31 @@
 <template>
-<p>{{msg}}</p>
+  <div id="app">
+    <p>{{msg}}</p>
+    <gRatio
+      :ratio="test_gRatio"
+    />
+  </div>
+  
 </template>
 
 <script lang="ts">
-import { Options, Vue } from 'vue-class-component';
+import Vue from 'vue';
+import gRatio from './components/gRatio.vue';
 
-
-@Options({ 
+export default Vue.extend({
   name: 'App',
   components: {
-    
+    gRatio
   },
   data: () => ({
-    firebase: null,
-    db: null,
+    test_frac: [5,4],
+    test_proper: false,
+    test_force: false,
+    test_kappa: false,
+    test_gRatio: {num: 3, den: 2, tmp: -0.004480476999315579 },
     msg: "Sectio Canonis 1.0.0"
   }),
-  created() {
-    this.initialize();
-  },
-  methods: {
-    initialize() {
-      //
-    }
-  }
-})
-
-export default class App extends Vue {}
+});
 </script>
 
 <style>

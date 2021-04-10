@@ -1,14 +1,14 @@
 import { PREC } from "./constants";
 
-export const round_12 = (val:number) => Math.round(val * 1e12)/1e12;
-export const round_6 = (val:number) => Math.round(val * 1e6)/1e6;
-export const round_4 = (val:number) => Math.round(val * 1e4)/1e4;
-export const round_3 = (val:number) => Math.round(val * 1e3)/1e3;
+export const round_12 = (val:number):number => Math.round(val * 1e12)/1e12;
+export const round_6 = (val:number):number => Math.round(val * 1e6)/1e6;
+export const round_4 = (val:number):number => Math.round(val * 1e4)/1e4;
+export const round_3 = (val:number):number => Math.round(val * 1e3)/1e3;
 /**
  * valid fraction: tuple of integers
  * @param frac 
  */
-export const valid_frac = (frac: any) => {
+export const valid_frac = (frac: any):boolean => {
   return (
     Array.isArray(frac) &&
     frac.length === 2 &&
@@ -25,7 +25,7 @@ export const is_int = (val: number):boolean => { return val % 1 === 0 };
 /** local 2d gcf */
 const _gcf = (a: number, b: number): number => (!b ? a : _gcf(b, a % b));
 /** greatest common factor */
-export const gcf = (nums: number[]) => {
+export const gcf = (nums: number[]):number => {
   if (nums.length == 0) return 1;
   let result = nums[0];
   for (let i = 1; i < nums.length; i++) {
@@ -38,14 +38,14 @@ export const gcf = (nums: number[]) => {
  * simplify ratio by gcf
  * @param  {number[]} ratio array of integers
  */
-export const simplify_ratio = (ratio: number[]) => {
+export const simplify_ratio = (ratio: number[]): fraction => {
   const factor = Math.abs(gcf(ratio));
   return ratio.map((el) => el / factor) as fraction;
 };
 /**
  * prime check
  */
-export const is_prime = (num: number) => {
+export const is_prime = (num: number): boolean => {
   if (num == 2) return true;
   if (num === 1 || num % 1 != 0 || num % 2 == 0) return false;
   for (let i = 3; i <= Math.sqrt(num); i += 2) {
@@ -58,7 +58,7 @@ export const is_prime = (num: number) => {
  * @param  {[type]} start   lower bound, default = 2
  * @return {[type]} array of prime numbers in the given bounds
  */
-export const get_primes = (range: number, start = 2) => {
+export const get_primes = (range: number, start = 2): number[] => {
   const primes = [];
   if (start == 2) primes.push(2);
   if (start % 2 === 0) start += 1;
@@ -76,8 +76,8 @@ export const get_primes = (range: number, start = 2) => {
  */
 export const decimal_to_fraction = (
   value: number,
-  range: number = 1000,
-  precision: number = 1e-16
+  range = 1000,
+  precision = 1e-16
 ):fraction => {
   const sign = Math.sign(value);
   const absval = Math.abs(value);
@@ -118,7 +118,7 @@ export const decimal_to_fraction = (
  * @param {number}
  * @return {number}
  */
-export const largest_prime = (val: number) => {
+export const largest_prime = (val: number):number => {
   val = Math.abs(val);
   if (val === 1 || val === 2) return val;
   while (val % 2 === 0) val /= 2;
