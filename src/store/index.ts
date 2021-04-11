@@ -57,8 +57,16 @@ export const STORE = {
   LOAD: LOAD_CANON,
   UNLOAD: UNLOAD_CANON,
   get CANON() { return CURRENT_CANON(); },
-  get POOL() {return _root_store.canons; },
-  get CURRENT() {return _root_store.current; },
-  get CONFIG() {return _root_store.ui_config; }
+  get POOL() {return _root_store.canons.map(id => {
+    return {
+      id,
+      code: $store.state[`canon-${id}`].data.code
+    }
+  }); },
+  set CURRENT(id: number) {
+    if (_root_store.canons.indexOf(id) >= 0) _root_store.current = id;
+   },
+  get CURRENT() { return _root_store.current; },
+  get CONFIG() { return _root_store.ui_config; }
 }
 export default $store;
