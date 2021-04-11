@@ -9,9 +9,11 @@ const rm_cache = new Map<string, RatioMap>();
  * immutable class for p-limit approximation of tuning systems\
  * creates a map of ratios in a given params, reduced to one octave
  */
-export class RatioMap extends Array {
+export class RatioMap {
   /** max ranges corresponding to p-limit */
   static readonly max_ranges = [1e7, 1e7, 1e6, 6e5, 6e3, 1e3, 300];
+  /** limited ratio space */
+  readonly space: Array<rm_record>;
   /** p-limit: max prime factor in system */
   readonly limit: plimit;
   /** max value for numerator or denominator, affects precision */
@@ -33,19 +35,18 @@ export class RatioMap extends Array {
   constructor(payload: any, range?: number) {
     if (
       payload != undefined &&
-      payload.ratios != undefined &&
-      payload.ratios.length > 0 &&
+      payload.space != undefined &&
+      payload.space.length > 0 &&
       payload.limit != undefined &&
       payload.range != undefined &&
       payload.primes != undefined
     ) {
-      super(payload.ratios.length);
-      for (let i = 0; i < this.length; i++) this[i] = payload.ratios[i];
+      this.space = payload.space;
       this.limit = payload.limit;
       this.range = payload.range;
       this.primes = payload.primes;
     } else if (typeof payload == "number") {
-      super();
+      this.space = Array<rm_record>();
       const limit = payload as plimit;
       /** p-limit index */
       const p_index = APPROX_PRIMES.indexOf(limit);
@@ -92,17 +93,18 @@ export class RatioMap extends Array {
         const record: rm_record = { euler, fact };
         Object.freeze(record);
         Object.freeze(record.fact);
-        this.push(record);
+        this.space.push(record);
       }
 
-      this.sort((a, b) => a.euler - b.euler);
+      this.space.sort((a, b) => a.euler - b.euler);
+      Object.freeze(this.space);
       Object.freeze(this);
     } else throw new Error("not enough data");
   }
   /** return stringified data */
   to_json() {
     return JSON.stringify({
-      ratios: this,
+      space: this.space,
       limit: this.limit,
       range: this.range,
       primes: this.primes,
@@ -126,17 +128,17 @@ export class RatioMap extends Array {
     
     //binary approximation search
     let start = 0,
-      end = this.length - 1,
+      end = this.space.length - 1,
       mid: number;
     while (end - start > 1) {
       mid = start + Math.trunc((end - start) / 2);
-      norm_eul > this[mid].euler ? (start = mid) : (end = mid);
+      norm_eul > this.space[mid].euler ? (start = mid) : (end = mid);
     }
     const record =
-      Math.abs(norm_eul - this[start].euler) <
-      Math.abs(norm_eul - this[end].euler)
-        ? (this[start] as rm_record)
-        : (this[end] as rm_record);
+      Math.abs(norm_eul - this.space[start].euler) <
+      Math.abs(norm_eul - this.space[end].euler)
+        ? (this.space[start] as rm_record)
+        : (this.space[end] as rm_record);
 
     const fact: pfv = {};
     for (const p in record.fact) fact[p] = euler > 0 && record.fact[p] != 0 ? record.fact[p] : -record.fact[p];
@@ -151,7 +153,8 @@ export const get_ratio_map = (limit: plimit, range: number) => {
   if (!is_int(limit) || !is_int(range)) throw Error("non integer arguments");
   const id = `RM-${limit}-${range}`;
   if (rm_cache.has(id)) { 
-    return rm_cache.get(id);
+    const rm = rm_cache.get(id) as RatioMap;
+    return rm;
   }
   else {
     const data = (localStorage as any).getItem(id);
