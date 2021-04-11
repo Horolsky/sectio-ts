@@ -4,6 +4,7 @@ import { State, Module, createVuexStore, registerModule, useModule, unregisterMo
 
 import Canon from './modules/canon'
 import UiConfig from './modules/ui-config'
+import UiState from './modules/ui-state'
 
 Vue.use(Vuex)
 
@@ -14,6 +15,8 @@ export class RootModule extends Vue {
   readonly canons = new Array<number>();
   @Module()
   public ui_config = new UiConfig();
+  @Module()
+  public ui_state = new UiState();
 }
 
 const _root_store = new RootModule()
@@ -49,7 +52,14 @@ export const UNLOAD_CANON = (id: number) => {
   const i = _root_store.canons.indexOf(id);
   if (i >= 0) {
     _root_store.canons.splice(i, 1);
-    if (_root_store.current == id) _root_store.current = i > 0 ? i-1 : -1;
+    if (_root_store.current == id) {
+      _root_store.current = 
+      i > 0 
+        ?_root_store.canons[i-1] 
+        : _root_store.canons.length > 0 
+          ? _root_store.canons[0]
+          : -1;
+    }
     unregisterModule($store, [`canon-${id}`]);
   }
 };
@@ -67,6 +77,7 @@ export const STORE = {
     if (_root_store.canons.indexOf(id) >= 0) _root_store.current = id;
    },
   get CURRENT() { return _root_store.current; },
-  get CONFIG() { return _root_store.ui_config; }
+  get CONFIG() { return _root_store.ui_config; },
+  get UI_STATE() { return _root_store.ui_state; }
 }
 export default $store;
